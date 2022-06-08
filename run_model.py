@@ -7,6 +7,7 @@ import wandb
 
 from args import parse_pipeline_args
 from data.datasets import get_dataset
+from evaluation import evaluate_binary
 from models import Daguerreo
 from utils import init_seeds, nll_ev
 
@@ -62,9 +63,15 @@ def run(args, wandb_mode):
 
         model.fit_mode(train_X_torch, nll_ev, args)
 
+        # evaluate
+        estimated_B = model.get_binary_adj().detach().numpy()
+
+        log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
+
         wandb.log(log_dict)
         logging.info(log_dict)
         wandb_run.finish()
+
 
         # print(model.get_graph())
         # np.save(name_path, W_learned) # TODO: save whole model

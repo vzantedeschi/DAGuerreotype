@@ -94,13 +94,6 @@ def parse_default_data_gen_args(
         help="set to standardize data. default: only 0-center data",
     )
 
-    augmented_parser.add_argument(
-        "--w_thres",
-        type=float,
-        default=1e-4,
-        help="ignore edges with smaller absolute weights",
-    )
-
     args, _ = augmented_parser.parse_known_args()
     return args, augmented_parser
 

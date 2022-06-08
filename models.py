@@ -1,3 +1,5 @@
+import wandb
+
 import torch
 from torch import nn
 from tqdm import tqdm
@@ -23,14 +25,12 @@ class Daguerreo():
 
         smap_optim = get_optimizer(self.order_learner.parameters(), name=args.optimizer, lr=args.lr_theta)  # to update sparsemap parameters
 
-        pbar = tqdm(range(1, args.num_epochs + 1))
+        pbar = tqdm(range(args.num_epochs))
 
         # outer loop
         for epoch in pbar:
-            breakpoint()
 
             smap_optim.zero_grad()
-            log_dict["epoch"] = epoch
 
             alphas, orderings = self.order_learner()
             num_orderings = len(alphas)
@@ -46,16 +46,24 @@ class Daguerreo():
             fidelity_objective = loss(x_hat, x, dim=(-2, -1))
 
             # this is the outer loss (i.e. the loss that depends only on the ranking params)
-            outer_objective = alphas @ fidelity_objective.detach()
-            outer_objective += args.l2_reg * self.order_learner.l2()
+            rec_loss = alphas @ fidelity_objective.detach()
+            theta_norm = self.order_learner.l2()
+
+            outer_objective = rec_loss + args.l2_reg * theta_norm
 
             outer_objective.backward()
 
             smap_optim.step()
 
-            pbar.set_description(f"outer objective {outer_objective.item():.2f} | np {num_orderings} | theta norm {self.order_learner.l2():.4f}")
+            pbar.set_description(f"outer objective {outer_objective.item():.2f} | np {num_orderings} | theta norm {theta_norm:.4f}")
 
-            log_dict["number of orderings"] = num_orderings
+            log_dict = {
+                "epoch": epoch,
+                "number of orderings": num_orderings,
+                "outer objective": outer_objective.item(),
+                "loss": rec_loss.item(),
+            }
+            wandb.log(log_dict)
 
         # TODO: call SparseMAP instead, but with very low temperature to get the MAP
         mode_ordering_id = torch.argmax(alphas)
@@ -70,3 +78,7 @@ class Daguerreo():
 
         self.mode_estimator = self.estimator_cls(self.d, 1, 1) # one structure, one set of equations
         self.mode_estimator.fit(x, self.mode_ordering, loss, args)
+
+    def get_binary_adj(self):
+
+        return self.mode_estimator.structure(self.mode_ordering).squeeze(0) 

@@ -6,6 +6,8 @@ import numpy as np
 import torch
 from torch.optim import LBFGS, SGD, Adam, AdamW, Optimizer
 
+import networkx as nx
+
 def init_seeds(seed: int) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -42,3 +44,18 @@ def nll_ev(output, target, dim=(-2, -1)):
 
     result = torch.log(loss) * target.shape[-1] / 2
     return result
+
+# -------------------------------------------------------- DAG UTILS
+
+def get_topological_rank(graph: np.array) -> np.array:
+
+    g_nx = nx.from_numpy_array(graph, create_using=nx.DiGraph)
+
+    layers = nx.topological_generations(g_nx)
+
+    rank = np.zeros(len(graph))
+    for l, layer in enumerate(layers):
+        for node in layer:
+            rank[node] = l
+
+    return rank
