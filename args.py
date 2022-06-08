@@ -157,7 +157,7 @@ def parse_default_model_args(
         type=str,
         choices=["adam", "adamW", "sgd", "lbfgs"],
     )
-    parser.add_argument("--lr_q", type=float, default=1e-1)
+    parser.add_argument("--lr_theta", type=float, default=1e-1)
     parser.add_argument("--lr", type=float, default=1e-3)
 
     args, _ = parser.parse_known_args()
@@ -170,12 +170,14 @@ def parse_default_model_args(
         choices=["cpu", "cuda"],
     )
     parser.add_argument(
-        "--l0_reg", type=float, default=0.01, help="l0 penalty over graph"
+        "--pruning_reg", type=float, default=0.01, help="pruning penalty over graph"
     )
     parser.add_argument(  # use l2_reg instead
         "--l2_reg", type=float, default=0.1, help="l2 penalty over all model weights (not graph)"
     )
-    parser.add_argument("--max_epochs", type=int, default=10000)
+    parser.add_argument("--num_epochs", type=int, default=1000)
+    parser.add_argument("--num_inner_iters", type=int, default=100)
+
 
     argparser.add_argument(
         "--nev",
@@ -190,9 +192,9 @@ def parse_default_model_args(
         "--smap_reg", type=float, default=1.0, help="SparseMap Regularization"
     )
 
-    parser.add_argument(
-        "--smap_init_q", type=str, default="zeros", choices=["zeros", "variances"]
-    )
+    # parser.add_argument(
+    #     "--smap_init_theta", type=str, default="zeros", choices=["zeros", "variances"]
+    # )
 
     parser.add_argument(
         "--smap_init",
