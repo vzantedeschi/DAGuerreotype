@@ -52,7 +52,7 @@ class SparseMapOrdering(Ordering):
 
 class Structure(nn.Module):
 
-    def __init__(self, d, num_structures=1):
+    def __init__(self, d, num_structures=1, initial_value=0.5):
 
         super(Structure, self).__init__()
 
@@ -66,7 +66,7 @@ class Structure(nn.Module):
 
         self.B = BernoulliSTERoot(
             (num_structures, d, d), 
-            initial_value=0.5 * torch.ones((num_structures, d, d))
+            initial_value=initial_value * torch.ones((num_structures, d, d))
         ) # a Bernouilli variable per edge
 
     def forward(self, orderings):
@@ -112,7 +112,7 @@ class LinearEquations(Equations):
         self.num_equations = num_equations
 
         self.W = nn.Parameter(
-            torch.Tensor(num_equations, d, d),
+            torch.randn(num_equations, d, d),
             requires_grad=True
         )
 
@@ -120,7 +120,7 @@ class LinearEquations(Equations):
 
         assert masked_x.shape[0] == self.num_equations or self.num_equations == 1
 
-        return torch.einsum("sndd,edd->snd", masked_x, self.W) # e = 1 or e = s
+        return torch.einsum("oncp,epc->onc", masked_x, self.W) # e = 1 or e = o
 
     def l2(self):
 
@@ -139,18 +139,18 @@ class Estimator(ABC):
 
 class LinearL0Estimator(Estimator, nn.Module):
 
-    def __init__(self, d, num_structures, num_equations=1):
+    def __init__(self, d, num_structures, num_equations=1, bernouilli_init=0.5):
 
         nn.Module.__init__(self)
 
-        self.structure = Structure(d, num_structures)
+        self.structure = Structure(d, num_structures, initial_value=bernouilli_init)
         self.equations = LinearEquations(d, num_equations)
 
     def forward(self, x, orderings):
         
-        mask = self.structure(orderings) # masks to remove dependencies inconstistent with the orderings
+        mask = self.structure(orderings) # masks to remove dependencies (i) inconstistent with the orderings or (ii) pruned out
 
-        masked_x = torch.einsum("opc,np->onpc", mask, x) # for each ordering (o), data point (i) and node (p): vector v, with v_c = x_ip if p is potentially a parent of c, 0 otherwise
+        masked_x = torch.einsum("opc,np->oncp", mask, x) # for each ordering (o), data point (i) and node (c): vector v, with v_p = x_ip if p is potentially a parent of c, 0 otherwise
 
         x_hat = self.equations(masked_x)
 
@@ -184,3 +184,40 @@ class LinearL0Estimator(Estimator, nn.Module):
 
     def l2(self):
         return self.equations.l2()
+
+if __name__ == "__main__":
+
+    from utils import init_seeds
+
+    init_seeds(39)
+    x = torch.arange(1, 7).reshape(2, 3)
+
+    ordering = torch.Tensor([0, 1, 2]).unsqueeze(0).long()
+    inverse_ordering = torch.argsort(ordering)
+
+    estimator = LinearL0Estimator(3, 1, 1, bernouilli_init=1.)
+
+    x_hat = estimator(x, inverse_ordering)
+
+    assert (x_hat[0, :, 0] == 0.).all()
+
+    ordering = torch.Tensor([1, 0, 2]).unsqueeze(0).long()
+    inverse_ordering = torch.argsort(ordering)
+
+    estimator = LinearL0Estimator(3, 1, 1, bernouilli_init=1.)
+
+    x_hat = estimator(x, inverse_ordering)
+
+    assert (x_hat[0, :, 1] == 0.).all()
+
+
+    x = torch.arange(1, 9).reshape(2, 4)
+
+    ordering = torch.Tensor([2, 0, 3, 1]).unsqueeze(0).long()
+    inverse_ordering = torch.argsort(ordering)
+
+    estimator = LinearL0Estimator(4, 1, 1, bernouilli_init=1.)
+
+    x_hat = estimator(x, inverse_ordering)
+
+    assert (x_hat[0, :, 2] == 0.).all()

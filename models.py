@@ -27,7 +27,7 @@ class Daguerreo():
 
         # outer loop
         for epoch in pbar:
-            # breakpoint()
+            breakpoint()
 
             smap_optim.zero_grad()
             log_dict["epoch"] = epoch
