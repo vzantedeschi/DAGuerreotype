@@ -1,6 +1,16 @@
+import random
 from typing import Iterable
 
+import numpy as np
+
+import torch
 from torch.optim import LBFGS, SGD, Adam, AdamW, Optimizer
+
+def init_seeds(seed: int) -> None:
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
 
 def get_optimizer(params: Iterable, name: str, lr: float) -> Optimizer:
     

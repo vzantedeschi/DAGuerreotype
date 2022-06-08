@@ -26,6 +26,8 @@ def parse_default_data_gen_args(
         choices=["synthetic", "sachs", "syntren"],
     )
 
+    args, _ = augmented_parser.parse_known_args()
+
     if args.dataset == "synthetic":
 
         augmented_parser.add_argument(
@@ -189,7 +191,7 @@ def parse_default_model_args(
     # ------------------------------------------------ SparseMAP ------------------------------------------------
 
     parser.add_argument(
-        "--smap_reg", type=float, default=1.0, help="SparseMap Regularization"
+        "--smap_tmp", type=float, default=1.0, help="SparseMap temperature"
     )
 
     # parser.add_argument(

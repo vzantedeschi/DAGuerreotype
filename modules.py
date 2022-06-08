@@ -1,14 +1,16 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 import torch
 from torch import nn
+
+from ranksp.ranksp import sparse_rank
 
 from bernouilli import BernoulliSTERoot
 from utils import get_optimizer
 
 # ------------------------------------------------------------------------------------- ORDERINGS
 
-class Ordering(nn.Module, ABCMeta):
+class Ordering(nn.Module, ABC):
 
     def __init__(self):
 
@@ -16,10 +18,10 @@ class Ordering(nn.Module, ABCMeta):
 
     @abstractmethod
     def forward(self):
-    	pass
+        pass
 
     def l2(self):
-    	return 0.
+        return 0.
 
 
 class SparseMapOrdering(Ordering):
@@ -41,10 +43,10 @@ class SparseMapOrdering(Ordering):
         self.theta = nn.Parameter(theta.unsqueeze(1), requires_grad=True)
     
     def forward(self):
-    	return sparse_rank(self.theta / self.tmp, init=self.init, max_iter=self.max_iter)
+        return sparse_rank(self.theta / self.tmp, init=self.init, max_iter=self.max_iter)
 
     def l2(self):
-    	return torch.sum(self.theta ** 2)
+        return torch.sum(self.theta ** 2)
 
 # ----------------------------------------------------------------------------------- STRUCTURES
 
@@ -58,24 +60,24 @@ class Structure(nn.Module):
         self.num_structures = num_structures
 
         self.M = nn.Parameter(
-        	torch.triu(torch.ones((d, d)), diagonal=1), 
-        	requires_grad=False
+            torch.triu(torch.ones((d, d)), diagonal=1), 
+            requires_grad=False
         )  # sets diagonal and lower triangle to 0 
 
         self.B = BernoulliSTERoot(
-        	(num_structures, d, d), 
-        	initial_value=0.5 * torch.ones((d, d))
+            (num_structures, d, d), 
+            initial_value=0.5 * torch.ones((num_structures, d, d))
         ) # a Bernouilli variable per edge
 
     def forward(self, orderings):
 
-    	assert orderings.shape == (self.num_structures, self.d, self.d)
+        assert orderings.shape == (self.num_structures, self.d), (orderings.shape, (self.num_structures, self.d))
 
-    	self.dag_mask = self.M[orderings[..., None], orderings[:, None]] # ensure maximal graph is a DAG
+        self.dag_mask = self.M[orderings[..., None], orderings[:, None]] # ensure maximal graph is a DAG
 
-    	sample_b = self.B() # sample 
+        sample_b = self.B() # sample 
 
-    	return self.dag_mask * sample_b
+        return self.dag_mask * sample_b
 
     def l0(self):
 
@@ -86,7 +88,7 @@ class Structure(nn.Module):
 
 # ------------------------------------------------------------------------------------ EQUATIONS
 
-class Equations(nn.Module, ABCMeta):
+class Equations(nn.Module, ABC):
 
     def __init__(self):
 
@@ -94,11 +96,11 @@ class Equations(nn.Module, ABCMeta):
 
     @abstractmethod
     def forward(self, masked_x):
-    	pass
+        pass
 
     @abstractmethod
     def l2(self):
-    	pass
+        pass
 
 class LinearEquations(Equations):
 
@@ -118,43 +120,46 @@ class LinearEquations(Equations):
 
         assert masked_x.shape[0] == self.num_equations or self.num_equations == 1
 
-    	return torch.einsum("snd,edd->snd", masked_x, self.W) # e = 1 or e = s
+        return torch.einsum("sndd,edd->snd", masked_x, self.W) # e = 1 or e = s
 
     def l2(self):
 
-    	return torch.sum(self.W ** 2, dim=(-2, -1)) # one l2 per structure
+        return torch.sum(self.W ** 2, dim=(-2, -1)) # one l2 per structure
 
 # ---------------------------------------------------------------------------------- ESTIMATORS
 
-class Estimator(ABCMeta):
+class Estimator(ABC):
 
     def __init__(self):
         pass
 
     @abstractmethod
     def forward(self, x, orderings):
-    	pass
+        pass
 
 class LinearL0Estimator(Estimator, nn.Module):
 
     def __init__(self, d, num_structures, num_equations=1):
 
-        super(LinearEstimator, self).__init__()
+        nn.Module.__init__(self)
 
         self.structure = Structure(d, num_structures)
         self.equations = LinearEquations(d, num_equations)
 
     def forward(self, x, orderings):
-    	
-        mask = self.structure(orderings)
-        x_hat = self.equations(mask * x)
+        
+        mask = self.structure(orderings) # masks to remove dependencies inconstistent with the orderings
+
+        masked_x = torch.einsum("opc,np->onpc", mask, x) # for each ordering (o), data point (i) and node (p): vector v, with v_c = x_ip if p is potentially a parent of c, 0 otherwise
+
+        x_hat = self.equations(masked_x)
 
         return x_hat
 
     def fit(self, x, orderings, loss, args):
 
         self.train()
-        
+
         optimizer = get_optimizer(
             self.parameters(), name=args.optimizer, lr=args.lr
         )  # to update structure and equations

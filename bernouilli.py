@@ -105,6 +105,7 @@ class BernoulliSTERoot(torch.nn.Module):
 
     def __init__(self, shape, initial_value=None):
         super().__init__()
+        
         self.op = BernoulliSTEOp(shape)
         self.theta = torch.nn.Parameter(torch.Tensor(*shape))
         self.initialize(initial_value)
@@ -116,7 +117,6 @@ class BernoulliSTERoot(torch.nn.Module):
             torch.nn.init.uniform_(self.theta, 0., 1.)
 
     def forward(self):
-
         if self.training:
             return self.op.forward(self.theta)
 

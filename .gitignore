@@ -2,3 +2,4 @@ build/*
 *.so
 *.pxd
 *.pyx
+**/__pycache__/*
