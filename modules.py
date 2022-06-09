@@ -135,18 +135,12 @@ class Estimator(ABC):
 
 class LinearL0Estimator(Estimator, nn.Module):
 
-    def __init__(self, d, num_structures, eq_instance: Equations = None, bernouilli_init=0.5):
+    def __init__(self, d, num_structures, bernouilli_init=0.5):
 
         nn.Module.__init__(self)
 
         self.structure = Structure(d, num_structures, initial_value=bernouilli_init)
-
-        if eq_instance is None:
-            self.equations = LinearEquations(d, num_structures)
-
-        else:
-            assert eq_instance.d == d
-            self.equations = eq_instance
+        self.equations = LinearEquations(d, num_structures)
 
     def forward(self, x, maskings):
         
