@@ -54,7 +54,7 @@ def run(args, wandb_mode):
         logging.info(f"Data seed: {seed}, run model {args.model}")
         # log_true_graph(dag_G=dag_W_torch.numpy(), args=args)
 
-        model = Daguerreo(args.num_nodes, smap_tmp=args.smap_tmp, smap_init=args.smap_init, smap_max_iter=args.smap_iter)
+        model = Daguerreo(args.num_nodes)
 
         if args.joint:
             raise NotImplementedError

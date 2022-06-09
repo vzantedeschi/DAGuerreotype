@@ -26,13 +26,9 @@ class Ordering(nn.Module, ABC):
 
 class SparseMapOrdering(Ordering):
 
-    def __init__(self, d, tmp=1e-5, init=False, theta_init=None, max_iter=100):
+    def __init__(self, d, theta_init=None):
 
         super(SparseMapOrdering, self).__init__()
-
-        self.tmp = tmp
-        self.init = init
-        self.max_iter = max_iter
 
         if theta_init is not None:
             theta = theta_init.clone().detach()
@@ -42,8 +38,8 @@ class SparseMapOrdering(Ordering):
 
         self.theta = nn.Parameter(theta.unsqueeze(1), requires_grad=True)
     
-    def forward(self):
-        return sparse_rank(self.theta / self.tmp, init=self.init, max_iter=self.max_iter)
+    def forward(self, tmp=1e-5, init=False, max_iter=100):
+        return sparse_rank(self.theta / tmp, init=init, max_iter=max_iter)
 
     def l2(self):
         return torch.sum(self.theta ** 2)
@@ -178,6 +174,8 @@ class LinearL0Estimator(Estimator, nn.Module):
             optimizer.zero_grad()
 
             self.structure.B.project()
+
+        self.eval()
 
     def l0(self):
         return self.structure.l0()
