@@ -114,9 +114,9 @@ class LinearEquations(Equations):
 
     def forward(self, masked_x):
 
-        assert masked_x.shape[0] == self.num_equations
+        assert masked_x.shape[0] == self.num_equations or self.num_equations == 1
 
-        return torch.einsum("oncp,opc->onc", masked_x, self.W)
+        return torch.einsum("oncp,epc->onc", masked_x, self.W) # e = 0 or e = 1
 
     def l2(self):
 

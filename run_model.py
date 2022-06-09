@@ -57,7 +57,7 @@ def run(args, wandb_mode):
         model = Daguerreo(args.num_nodes)
 
         if args.joint:
-            raise NotImplementedError
+            log_dict = model.joint_optimization(train_X_torch, nll_ev, args)
         else:
             log_dict = model.bilevel_optimization(train_X_torch, nll_ev, args)
 
