@@ -10,11 +10,11 @@ from utils import get_optimizer
 
 # ------------------------------------------------------------------------------------- ORDERINGS
 
-class Ordering(nn.Module, ABC):
+class Masking(nn.Module, ABC):
 
     def __init__(self):
 
-        super(Ordering, self).__init__()
+        super(Masking, self).__init__()
 
     @abstractmethod
     def forward(self):
@@ -24,11 +24,11 @@ class Ordering(nn.Module, ABC):
         return 0.
 
 
-class SparseMapOrdering(Ordering):
+class SparseMapMasking(Masking):
 
     def __init__(self, d, theta_init=None):
 
-        super(SparseMapOrdering, self).__init__()
+        super(SparseMapMasking, self).__init__()
 
         if theta_init is not None:
             theta = theta_init.clone().detach()
@@ -37,9 +37,13 @@ class SparseMapOrdering(Ordering):
             theta = torch.zeros(d)
 
         self.theta = nn.Parameter(theta.unsqueeze(1), requires_grad=True)
+
+        self.M = torch.triu(torch.ones((d, d)), diagonal=1)
     
     def forward(self, tmp=1e-5, init=False, max_iter=100):
-        return sparse_rank(self.theta / tmp, init=init, max_iter=max_iter)
+        alphas, orderings = sparse_rank(self.theta / tmp, init=init, max_iter=max_iter)
+
+        return alphas, self.M[orderings[..., None], orderings[:, None]]
 
     def l2(self):
         return torch.sum(self.theta ** 2)
@@ -55,25 +59,20 @@ class Structure(nn.Module):
         self.d = d
         self.num_structures = num_structures
 
-        self.M = nn.Parameter(
-            torch.triu(torch.ones((d, d)), diagonal=1), 
-            requires_grad=False
-        )  # sets diagonal and lower triangle to 0 
-
         self.B = BernoulliSTERoot(
             (num_structures, d, d), 
             initial_value=initial_value * torch.ones((num_structures, d, d))
         ) # a Bernouilli variable per edge
 
-    def forward(self, orderings):
+    def forward(self, maskings):
 
-        assert orderings.shape == (self.num_structures, self.d), (orderings.shape, (self.num_structures, self.d))
+        assert maskings.shape[0] == self.num_structures or self.num_structures == 1
 
-        self.dag_mask = self.M[orderings[..., None], orderings[:, None]] # ensure maximal graph is a DAG
+        self.dag_mask = maskings
 
         sample_b = self.B() # sample 
 
-        return self.dag_mask * sample_b
+        return maskings * sample_b
 
     def l0(self):
 
@@ -86,9 +85,11 @@ class Structure(nn.Module):
 
 class Equations(nn.Module, ABC):
 
-    def __init__(self):
+    def __init__(self, d):
 
         super(Equations, self).__init__()
+
+        self.d = d
 
     @abstractmethod
     def forward(self, masked_x):
@@ -102,9 +103,8 @@ class LinearEquations(Equations):
 
     def __init__(self, d, num_equations=1):
 
-        super(Equations, self).__init__()
+        super(LinearEquations, self).__init__(d)
 
-        self.d = d
         self.num_equations = num_equations
 
         self.W = nn.Parameter(
@@ -114,9 +114,9 @@ class LinearEquations(Equations):
 
     def forward(self, masked_x):
 
-        assert masked_x.shape[0] == self.num_equations or self.num_equations == 1
+        assert masked_x.shape[0] == self.num_equations
 
-        return torch.einsum("oncp,epc->onc", masked_x, self.W) # e = 1 or e = o
+        return torch.einsum("oncp,opc->onc", masked_x, self.W)
 
     def l2(self):
 
@@ -135,24 +135,30 @@ class Estimator(ABC):
 
 class LinearL0Estimator(Estimator, nn.Module):
 
-    def __init__(self, d, num_structures, num_equations=1, bernouilli_init=0.5):
+    def __init__(self, d, num_structures, eq_instance: Equations = None, bernouilli_init=0.5):
 
         nn.Module.__init__(self)
 
         self.structure = Structure(d, num_structures, initial_value=bernouilli_init)
-        self.equations = LinearEquations(d, num_equations)
 
-    def forward(self, x, orderings):
+        if eq_instance is None:
+            self.equations = LinearEquations(d, num_structures)
+
+        else:
+            assert eq_instance.d == d
+            self.equations = eq_instance
+
+    def forward(self, x, maskings):
         
-        mask = self.structure(orderings) # masks to remove dependencies (i) inconstistent with the orderings or (ii) pruned out
+        dags = self.structure(maskings)
 
-        masked_x = torch.einsum("opc,np->oncp", mask, x) # for each ordering (o), data point (i) and node (c): vector v, with v_p = x_ip if p is potentially a parent of c, 0 otherwise
+        masked_x = torch.einsum("opc,np->oncp", dags, x) # for each ordering (o), data point (i) and node (c): vector v, with v_p = x_ip if p is potentially a parent of c, 0 otherwise
 
         x_hat = self.equations(masked_x)
 
         return x_hat
 
-    def fit(self, x, orderings, loss, args):
+    def fit(self, x, maskings, loss, args):
 
         self.train()
 
@@ -163,7 +169,7 @@ class LinearL0Estimator(Estimator, nn.Module):
         # inner loop
         for inner_iters in range(args.num_inner_iters):
             
-            x_hat = self(x, orderings) # (num_structures, n, d)
+            x_hat = self(x, maskings) # (num_structures, n, d)
 
             objective = loss(x_hat, x, dim=(-2, -1))
             objective += args.pruning_reg * self.l0() + args.l2_reg * self.l2()
@@ -193,29 +199,39 @@ if __name__ == "__main__":
     ordering = torch.Tensor([0, 1, 2]).unsqueeze(0).long()
     inverse_ordering = torch.argsort(ordering)
 
-    estimator = LinearL0Estimator(3, 1, 1, bernouilli_init=1.)
+    M = torch.triu(torch.ones((3, 3)), diagonal=1)
+    Mp = M[inverse_ordering[..., None], inverse_ordering[:, None]]
 
-    x_hat = estimator(x, inverse_ordering)
+    estimator = LinearL0Estimator(3, 1, bernouilli_init=1.)
+
+    x_hat = estimator(x, Mp)
 
     assert (x_hat[0, :, 0] == 0.).all()
 
     ordering = torch.Tensor([1, 0, 2]).unsqueeze(0).long()
     inverse_ordering = torch.argsort(ordering)
 
-    estimator = LinearL0Estimator(3, 1, 1, bernouilli_init=1.)
+    M = torch.triu(torch.ones((3, 3)), diagonal=1)
+    Mp = M[inverse_ordering[..., None], inverse_ordering[:, None]]
 
-    x_hat = estimator(x, inverse_ordering)
+    estimator = LinearL0Estimator(3, 1, bernouilli_init=1.)
+
+    x_hat = estimator(x, Mp)
 
     assert (x_hat[0, :, 1] == 0.).all()
 
 
     x = torch.arange(1, 9).reshape(2, 4)
 
-    ordering = torch.Tensor([2, 0, 3, 1]).unsqueeze(0).long()
+    ordering = torch.Tensor([[2, 0, 3, 1], [1, 3, 2, 0]]).long()
     inverse_ordering = torch.argsort(ordering)
 
-    estimator = LinearL0Estimator(4, 1, 1, bernouilli_init=1.)
+    M = torch.triu(torch.ones((4, 4)), diagonal=1)
+    Mp = M[inverse_ordering[..., None], inverse_ordering[:, None]]
 
-    x_hat = estimator(x, inverse_ordering)
+    estimator = LinearL0Estimator(4, 2, bernouilli_init=1.)
+
+    x_hat = estimator(x, Mp)
 
     assert (x_hat[0, :, 2] == 0.).all()
+    assert (x_hat[1, :, 1] == 0.).all()
