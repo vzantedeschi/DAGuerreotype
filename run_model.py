@@ -73,6 +73,8 @@ def run(args, wandb_mode):
         if args.joint:
             logging.info(" Joint optimization")
 
+            assert args.estimator != "LARS", "joint optimization not available for LARS estimator"
+
             log_dict = model.joint_optimization(X_torch, nll_ev, args)
         else:
             logging.info(" Bi-level optimization")
