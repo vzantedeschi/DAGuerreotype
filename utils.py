@@ -14,6 +14,9 @@ def init_seeds(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
     random.seed(seed)
 
+def get_variances(X):
+    return torch.var(X, dim=0, unbiased=False)
+
 def get_optimizer(params: Iterable, name: str, lr: float) -> Optimizer:
     
     str_to_optim = {

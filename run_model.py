@@ -9,8 +9,7 @@ from args import parse_pipeline_args
 from data.datasets import get_dataset
 from evaluation import evaluate_binary
 from models import Daguerreo
-from utils import init_seeds, nll_ev
-
+from utils import init_seeds, nll_ev, get_variances
 
 def run(args, wandb_mode):
 
@@ -26,7 +25,7 @@ def run(args, wandb_mode):
 
         init_seeds(seed=seed)
         
-        dag_B_torch, dag_W_torch, train_X_torch = get_dataset(args, to_torch=True, seed=seed+1)
+        dag_B_torch, dag_W_torch, X_torch = get_dataset(args, to_torch=True, seed=seed+1)
 
         config["data_seed"] = seed
 
@@ -54,14 +53,19 @@ def run(args, wandb_mode):
         logging.info(f"Data seed: {seed}, run model {args.model}")
         # log_true_graph(dag_G=dag_W_torch.numpy(), args=args)
 
-        model = Daguerreo(args.num_nodes)
+        if args.smap_init_theta == "variances":
+            smap_init = get_variances(X_torch)
+        else:
+            smap_init = None
+
+        model = Daguerreo(args.num_nodes, smap_init=smap_init)
 
         if args.joint:
-            log_dict = model.joint_optimization(train_X_torch, nll_ev, args)
+            log_dict = model.joint_optimization(X_torch, nll_ev, args)
         else:
-            log_dict = model.bilevel_optimization(train_X_torch, nll_ev, args)
+            log_dict = model.bilevel_optimization(X_torch, nll_ev, args)
 
-        model.fit_mode(train_X_torch, nll_ev, args)
+        model.fit_mode(X_torch, nll_ev, args)
 
         # evaluate
         estimated_B = model.get_binary_adj().detach().numpy()

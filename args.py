@@ -187,9 +187,9 @@ def parse_default_model_args(
         "--smap_tmp", type=float, default=1.0, help="SparseMap temperature"
     )
 
-    # parser.add_argument(
-    #     "--smap_init_theta", type=str, default="zeros", choices=["zeros", "variances"]
-    # )
+    parser.add_argument(
+        "--smap_init_theta", type=str, default="zeros", choices=["zeros", "variances"]
+    )
 
     parser.add_argument(
         "--smap_init",

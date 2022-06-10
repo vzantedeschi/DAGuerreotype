@@ -31,7 +31,8 @@ class SparseMapMasking(Masking):
         super(SparseMapMasking, self).__init__()
 
         if theta_init is not None:
-            theta = theta_init.clone().detach()
+            m = theta_init.median()
+            theta = (theta_init - m).clone().detach() # to have both positive and negative values
 
         else:
             theta = torch.zeros(d)

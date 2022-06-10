@@ -9,12 +9,11 @@ from utils import get_optimizer
 
 class Daguerreo(nn.Module):
 
-    def __init__(self, d, estimator_cls=LinearL0Estimator):
+    def __init__(self, d, estimator_cls=LinearL0Estimator, smap_init=None):
 
         super(Daguerreo, self).__init__()
 
-        # TODO: allow different init for theta
-        self.smap_masking = SparseMapMasking(d, theta_init=None)
+        self.smap_masking = SparseMapMasking(d, theta_init=smap_init)
 
         self.estimator_cls = estimator_cls
         self.d = d
@@ -86,9 +85,10 @@ class Daguerreo(nn.Module):
 
             exp_loss = alphas @ loss(x_hat, x, dim=(-2, -1))
             exp_l0 = alphas @ self.estimator.l0()
-            theta_norm = self.smap_masking.l2()
+            theta_norm = self.smap_masking.l2() 
+            l2 = theta_norm + self.estimator.l2().sum()
 
-            objective = exp_loss + args.pruning_reg * exp_l0 + args.l2_reg * theta_norm
+            objective = exp_loss + args.pruning_reg * exp_l0 + args.l2_reg * l2
 
             objective.backward()
 
@@ -101,6 +101,7 @@ class Daguerreo(nn.Module):
                 "number of orderings": num_orderings,
                 "objective": objective.item(),
                 "expected loss": exp_loss.item(),
+                "expected l0": exp_l0.item(),
             }
             wandb.log(log_dict)
 
