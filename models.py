@@ -117,4 +117,4 @@ class Daguerreo(nn.Module):
 
     def get_binary_adj(self):
 
-        return self.mode_estimator.structure(self.mode_masking).squeeze(0) 
+        return self.mode_estimator.get_structure(self.mode_masking).squeeze(0) 

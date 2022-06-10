@@ -125,7 +125,7 @@ def parse_default_model_args(
         default="LARS",
         choices=[
             "LARS",
-            "L0-NN",
+            "L0-Linear",
         ],
     )
 

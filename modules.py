@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
 
+from sklearn.linear_model import LinearRegression, LassoLarsIC
+from sklearn.exceptions import ConvergenceWarning
+
+import warnings
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 import torch
 from torch import nn
+
+import numpy as np
 
 from ranksp.ranksp import sparse_rank
 
@@ -51,11 +60,11 @@ class SparseMapMasking(Masking):
 
 # ----------------------------------------------------------------------------------- STRUCTURES
 
-class Structure(nn.Module):
+class BernouilliStructure(nn.Module):
 
     def __init__(self, d, num_structures=1, initial_value=0.5):
 
-        super(Structure, self).__init__()
+        nn.Module.__init__(self)
 
         self.d = d
         self.num_structures = num_structures
@@ -131,8 +140,47 @@ class Estimator(ABC):
         pass
 
     @abstractmethod
-    def forward(self, x, orderings):
+    def get_structure(self, masking):
         pass
+
+class LARS(Estimator):
+
+    def __init__(self, d, *args):
+
+        self.d = d
+
+    def __call__(self, x, *args):
+        return torch.einsum("np,opc->onc", x, self.W)
+
+    def fit(self, x, maskings, *args):
+
+        LR = LinearRegression(normalize=False, n_jobs=1)
+        LL = LassoLarsIC(criterion='bic', normalize=False)
+
+        x_numpy = x.detach().numpy()
+        masks_numpy = maskings.long().detach().numpy()
+        
+        self.W = np.zeros((len(masks_numpy), self.d, self.d))
+
+        for m, mask in enumerate(masks_numpy):
+            for target in range(self.d):
+
+                covariates = np.nonzero(mask[:, target])[0]
+
+                if len(covariates) > 0: # if target is not a root node
+
+                    LR.fit(x_numpy[:, covariates], x_numpy[:, target].ravel())
+                    weight = np.abs(LR.coef_)
+
+                    LL.fit(x_numpy[:, covariates] * weight, x_numpy[:, target].ravel())
+                    self.W[m, covariates, target] = LL.coef_ * weight
+
+            assert (self.W[m, mask == 0] == 0).all(), (self.W[m], mask)
+
+        self.W = torch.from_numpy(self.W)
+
+    def get_structure(self, *args):
+        return self.W != 0
 
 class LinearL0Estimator(Estimator, nn.Module):
 
@@ -140,7 +188,7 @@ class LinearL0Estimator(Estimator, nn.Module):
 
         nn.Module.__init__(self)
 
-        self.structure = Structure(d, num_structures, initial_value=bernouilli_init)
+        self.structure = BernouilliStructure(d, num_structures, initial_value=bernouilli_init)
         self.equations = LinearEquations(d, num_structures)
 
     def forward(self, x, maskings):
@@ -183,6 +231,9 @@ class LinearL0Estimator(Estimator, nn.Module):
 
     def l2(self):
         return self.equations.l2()
+
+    def get_structure(self, masking):
+        return self.structure(masking)
 
 if __name__ == "__main__":
 

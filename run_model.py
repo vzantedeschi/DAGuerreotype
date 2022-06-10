@@ -9,7 +9,8 @@ from args import parse_pipeline_args
 from data.datasets import get_dataset
 from evaluation import evaluate_binary
 from models import Daguerreo
-from utils import init_seeds, nll_ev, get_variances
+from modules import LARS, LinearL0Estimator
+from utils import init_seeds, nll_ev, get_variances, log_graph
 
 def run(args, wandb_mode):
 
@@ -25,6 +26,7 @@ def run(args, wandb_mode):
 
         init_seeds(seed=seed)
         
+        # TODO: use numpy as default and let classes convert to pytorch
         dag_B_torch, dag_W_torch, X_torch = get_dataset(args, to_torch=True, seed=seed+1)
 
         config["data_seed"] = seed
@@ -50,7 +52,9 @@ def run(args, wandb_mode):
             mode=wandb_mode,
         )
 
-        logging.info(f"Data seed: {seed}, run model {args.model}")
+        log_graph(dag_W_torch.detach().numpy(), "True")
+
+        logging.info(f" Data seed: {seed}, run model {args.model} with {args.estimator} and SMAP's initial theta = {args.smap_init_theta}")
         # log_true_graph(dag_G=dag_W_torch.numpy(), args=args)
 
         if args.smap_init_theta == "variances":
@@ -58,11 +62,21 @@ def run(args, wandb_mode):
         else:
             smap_init = None
 
-        model = Daguerreo(args.num_nodes, smap_init=smap_init)
+        # TODO: add nonlinear estimator
+        if args.estimator == "LARS":
+            estimator_cls = LARS
+        else:
+            estimator_cls = LinearL0Estimator
+
+        model = Daguerreo(args.num_nodes, smap_init=smap_init, estimator_cls=estimator_cls)
 
         if args.joint:
+            logging.info(" Joint optimization")
+
             log_dict = model.joint_optimization(X_torch, nll_ev, args)
         else:
+            logging.info(" Bi-level optimization")
+
             log_dict = model.bilevel_optimization(X_torch, nll_ev, args)
 
         model.fit_mode(X_torch, nll_ev, args)
@@ -70,7 +84,10 @@ def run(args, wandb_mode):
         # evaluate
         estimated_B = model.get_binary_adj().detach().numpy()
 
+        log_graph(estimated_B, "learned")
+
         log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
+
 
         wandb.log(log_dict)
         logging.info(log_dict)
