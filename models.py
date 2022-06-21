@@ -4,18 +4,25 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from modules import SparseMapMasking, LinearL0Estimator
+from modules import SparseMapMasking, NNL0Estimator
 from utils import get_optimizer
 
 class Daguerreo(nn.Module):
 
-    def __init__(self, d, estimator_cls=LinearL0Estimator, smap_init=None):
+    def __init__(self, d, smap_init=None, estimator_cls=NNL0Estimator, estimator_kwargs=None):
 
         super(Daguerreo, self).__init__()
 
         self.smap_masking = SparseMapMasking(d, theta_init=smap_init)
 
         self.estimator_cls = estimator_cls
+
+        if estimator_kwargs is None:
+            self.estimator_kwargs = {}
+        else:
+            assert type(estimator_kwargs) is dict
+            self.estimator_kwargs = estimator_kwargs
+
         self.d = d
 
     def bilevel_optimization(self, x, loss, args):
@@ -35,7 +42,7 @@ class Daguerreo(nn.Module):
             num_orderings = len(alphas)
 
             # inner problem: learn regressor
-            self.estimator = self.estimator_cls(self.d, num_orderings)
+            self.estimator = self.estimator_cls(self.d, num_orderings, **self.estimator_kwargs)
             self.estimator.fit(x, maskings, loss, args)
 
             x_hat = self.estimator(x, maskings)
@@ -67,7 +74,7 @@ class Daguerreo(nn.Module):
 
         log_dict = {}
 
-        self.estimator = self.estimator_cls(self.d, 1) # init single structure
+        self.estimator = self.estimator_cls(self.d, 1, **self.estimator_kwargs) # init single structure
 
         optimizer = get_optimizer(self.parameters(), name=args.optimizer, lr=args.lr)
 
@@ -82,9 +89,10 @@ class Daguerreo(nn.Module):
             num_orderings = len(alphas)
 
             x_hat = self.estimator(x, maskings)
+            self.estimator.project()
 
             exp_loss = alphas @ loss(x_hat, x, dim=(-2, -1))
-            exp_l0 = alphas @ self.estimator.l0()
+            exp_l0 = alphas @ self.estimator.pruning()
             theta_norm = self.smap_masking.l2() 
             l2 = theta_norm + self.estimator.l2().sum()
 
@@ -109,10 +117,11 @@ class Daguerreo(nn.Module):
 
     def fit_mode(self, x, loss, args):
 
+        # todo: use sort instead
         alphas, self.mode_masking = self.smap_masking() # with default values, returns MAP
         assert len(alphas) == 1
         
-        self.mode_estimator = self.estimator_cls(self.d, 1) # one structure
+        self.mode_estimator = self.estimator_cls(self.d, 1, **self.estimator_kwargs) # one structure
         self.mode_estimator.fit(x, self.mode_masking, loss, args)
 
     def get_binary_adj(self):

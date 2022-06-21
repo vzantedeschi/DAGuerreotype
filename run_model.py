@@ -9,7 +9,7 @@ from args import parse_pipeline_args
 from data.datasets import get_dataset
 from evaluation import evaluate_binary
 from models import Daguerreo
-from modules import LARS, LinearL0Estimator
+from modules import LARS, NNL0Estimator
 from utils import init_seeds, nll_ev, get_variances, log_graph
 
 def run(args, wandb_mode):
@@ -66,9 +66,9 @@ def run(args, wandb_mode):
         if args.estimator == "LARS":
             estimator_cls = LARS
         else:
-            estimator_cls = LinearL0Estimator
+            estimator_cls = NNL0Estimator
 
-        model = Daguerreo(args.num_nodes, smap_init=smap_init, estimator_cls=estimator_cls)
+        model = Daguerreo(args.num_nodes, smap_init=smap_init, estimator_cls=estimator_cls, estimator_kwargs={"linear": not args.nonlinear, "hidden": args.hidden, "activation": torch.nn.functional.leaky_relu})
 
         if args.joint:
             logging.info(" Joint optimization")

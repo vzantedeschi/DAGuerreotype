@@ -125,7 +125,7 @@ def parse_default_model_args(
         default="LARS",
         choices=[
             "LARS",
-            "L0-Linear",
+            "NN",
         ],
     )
 
@@ -136,11 +136,9 @@ def parse_default_model_args(
     # -------------------------------------------------- MLP --------------------------------------------------
 
     parser.add_argument(
-        "--hidden", type=int, default=1, help="Dimensions of hidden layers"
+        "--hidden", type=int, default=10, help="Dimensions of hidden layers"
     )
     
-    parser.add_argument("--offset", default=False, action="store_true",)
-
     parser.add_argument(
         "--nonlinear", default=False, action="store_true", help="whether use nonlinear graph"
     )
@@ -150,7 +148,7 @@ def parse_default_model_args(
         "--optimizer",
         default="adam",
         type=str,
-        choices=["adam", "adamW", "sgd", "lbfgs"],
+        choices=["adam", "adamW", "sgd"],
     )
     parser.add_argument("--lr_theta", type=float, default=1e-1)
     parser.add_argument("--lr", type=float, default=1e-3)

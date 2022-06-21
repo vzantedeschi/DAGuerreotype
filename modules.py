@@ -115,22 +115,63 @@ class LinearEquations(Equations):
 
         super(LinearEquations, self).__init__(d)
 
-        self.num_equations = num_equations
+        self.num_equations = num_equations # number of sets of structural equations, for bilevel this is equal to the number of orderings, for joint this is equal to 1
 
         self.W = nn.Parameter(
             torch.randn(num_equations, d, d),
+            requires_grad=True
+        ) # W[:, p, c] one weight from parent p to child c 
+        # W[0]'s column c reconstructs node c
+
+    def forward(self, masked_x):
+
+        return torch.einsum("oncp,opc->onc", masked_x, self.W)
+
+    def l2(self):
+
+        return torch.sum(self.W ** 2, dim=(-2, -1)) # one l2 per set of equations
+
+class NonLinearEquations(Equations):
+
+    def __init__(self, d, num_equations=1, hidden=2, activation=torch.nn.functional.leaky_relu):
+
+        super(NonLinearEquations, self).__init__(d)
+
+        self.num_equations = num_equations
+        self.hidden = hidden
+
+        self.W = nn.Parameter(
+            torch.randn(num_equations, d, d, hidden) * 0.05, #TODO: check for better value of std
+            requires_grad=True
+        )
+
+        self.bias = nn.Parameter(
+            torch.zeros(num_equations, 1, d, hidden),
+            requires_grad=True
+        )
+
+        self.activation = activation
+
+        self.final_map = nn.Parameter(
+            torch.randn(num_equations, d, hidden) * 0.05,
             requires_grad=True
         )
 
     def forward(self, masked_x):
 
-        assert masked_x.shape[0] == self.num_equations or self.num_equations == 1
+        out = torch.einsum("oncp,opch->onch", masked_x, self.W) #
 
-        return torch.einsum("oncp,epc->onc", masked_x, self.W) # e = 0 or e = 1
+        out = self.activation(out + self.bias)
+
+        return torch.einsum("onch,och->onc", out, self.final_map)
 
     def l2(self):
 
-        return torch.sum(self.W ** 2, dim=(-2, -1)) # one l2 per structure
+        out = torch.sum(self.W ** 2, dim=(-3, -2, -1)) # one l2 per set of equations
+        out += torch.sum(self.bias ** 2, dim=(-3, -2, -1))
+        out += torch.sum(self.final_map ** 2, dim=(-2, -1))
+
+        return out
 
 # ---------------------------------------------------------------------------------- ESTIMATORS
 
@@ -140,12 +181,19 @@ class Estimator(ABC):
         pass
 
     @abstractmethod
+    def fit(self, x, maskings, *args):
+        pass
+
+    @abstractmethod
     def get_structure(self, masking):
+        pass
+
+    def project(self):
         pass
 
 class LARS(Estimator):
 
-    def __init__(self, d, *args):
+    def __init__(self, d, *args, **kwargs):
 
         self.d = d
 
@@ -182,14 +230,18 @@ class LARS(Estimator):
     def get_structure(self, *args):
         return self.W != 0
 
-class LinearL0Estimator(Estimator, nn.Module):
+class NNL0Estimator(Estimator, nn.Module):
 
-    def __init__(self, d, num_structures, bernouilli_init=0.5):
+    def __init__(self, d, num_structures, bernouilli_init=0.5, linear=True, hidden=1, activation=torch.nn.functional.leaky_relu):
 
         nn.Module.__init__(self)
-
+        # TODO: rename to sparsity
         self.structure = BernouilliStructure(d, num_structures, initial_value=bernouilli_init)
-        self.equations = LinearEquations(d, num_structures)
+
+        if linear:
+            self.equations = LinearEquations(d, num_structures)
+        else:
+            self.equations = NonLinearEquations(d, num_structures, hidden=hidden, activation=activation)
 
     def forward(self, x, maskings):
         
@@ -215,18 +267,21 @@ class LinearL0Estimator(Estimator, nn.Module):
             x_hat = self(x, maskings) # (num_structures, n, d)
 
             objective = loss(x_hat, x, dim=(-2, -1))
-            objective += args.pruning_reg * self.l0() + args.l2_reg * self.l2()
+            objective += args.pruning_reg * self.pruning() + args.l2_reg * self.l2()
 
             objective.sum().backward()
 
             optimizer.step()
             optimizer.zero_grad()
 
-            self.structure.B.project()
+            self.project()
 
         self.eval()
 
-    def l0(self):
+    def project(self):
+        self.structure.B.project()
+
+    def pruning(self):
         return self.structure.l0()
 
     def l2(self):
@@ -248,7 +303,7 @@ if __name__ == "__main__":
     M = torch.triu(torch.ones((3, 3)), diagonal=1)
     Mp = M[inverse_ordering[..., None], inverse_ordering[:, None]]
 
-    estimator = LinearL0Estimator(3, 1, bernouilli_init=1.)
+    estimator = NNL0Estimator(3, 1, bernouilli_init=1.)
 
     x_hat = estimator(x, Mp)
 
@@ -260,7 +315,7 @@ if __name__ == "__main__":
     M = torch.triu(torch.ones((3, 3)), diagonal=1)
     Mp = M[inverse_ordering[..., None], inverse_ordering[:, None]]
 
-    estimator = LinearL0Estimator(3, 1, bernouilli_init=1.)
+    estimator = NNL0Estimator(3, 1, bernouilli_init=1.)
 
     x_hat = estimator(x, Mp)
 
@@ -275,9 +330,19 @@ if __name__ == "__main__":
     M = torch.triu(torch.ones((4, 4)), diagonal=1)
     Mp = M[inverse_ordering[..., None], inverse_ordering[:, None]]
 
-    estimator = LinearL0Estimator(4, 2, bernouilli_init=1.)
+    estimator = NNL0Estimator(4, 2, bernouilli_init=1.)
 
     x_hat = estimator(x, Mp)
 
     assert (x_hat[0, :, 2] == 0.).all()
     assert (x_hat[1, :, 1] == 0.).all()
+
+
+    nonlinear_equations = NonLinearEquations(4, num_equations=1, hidden=10)
+
+    masked_x = torch.einsum("opc,np->oncp", Mp, x) # for each ordering (o), data point (i) and node (c): vector v, with v_p = x_ip if p is potentially a parent of c, 0 otherwise
+
+    x_hat = nonlinear_equations(masked_x)
+
+    assert len(torch.unique(x_hat[0, :, 2])) == 1
+    assert len(torch.unique(x_hat[1, :, 1])) == 1
