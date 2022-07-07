@@ -1,20 +1,18 @@
+import warnings
 from abc import ABC, abstractmethod
 
-from sklearn.linear_model import LinearRegression, LassoLarsIC
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.linear_model import LassoLarsIC, LinearRegression
 
-import warnings
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+import numpy as np
 import torch
 from torch import nn
 
-import numpy as np
-
-from ranksp.ranksp import sparse_rank
-
 from bernouilli import BernoulliSTERoot
+from ranksp.ranksp import sparse_rank
 from utils import get_optimizer
 
 # ------------------------------------------------------------------------------------- ORDERINGS
@@ -60,7 +58,7 @@ class SparseMapMasking(Masking):
 
 # ----------------------------------------------------------------------------------- STRUCTURES
 
-class BernouilliStructure(nn.Module):
+class BernoulliStructure(nn.Module):
 
     def __init__(self, d, num_structures=1, initial_value=0.5):
 
@@ -236,7 +234,7 @@ class NNL0Estimator(Estimator, nn.Module):
 
         nn.Module.__init__(self)
         # TODO: rename to sparsity
-        self.structure = BernouilliStructure(d, num_structures, initial_value=bernouilli_init)
+        self.structure = BernoulliStructure(d, num_structures, initial_value=bernouilli_init)
 
         if linear:
             self.equations = LinearEquations(d, num_structures)
