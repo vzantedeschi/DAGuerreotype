@@ -14,8 +14,9 @@ from utils import init_seeds, nll_ev, get_variances, log_graph
 
 def run(args, wandb_mode):
 
-    device = torch.device(args.device)
+    device = torch.device(args.device)  # TODO unused! check this
 
+    # logging
     project = f"{args.project}"
     project_path = Path(args.results_path) / project
     project_path.mkdir(parents=True, exist_ok=True)
@@ -32,7 +33,8 @@ def run(args, wandb_mode):
         config["data_seed"] = seed
 
         name = f"seed={seed}"
-        
+
+        # experiment naming
         try:
             group = f"{args.model}-{args.graph_type}-{args.sem_type}-{args.num_nodes}-{args.num_samples}" # for synthetic data
         except:
@@ -57,6 +59,7 @@ def run(args, wandb_mode):
         logging.info(f" Data seed: {seed}, run model {args.model} with {args.estimator} and SMAP's initial theta = {args.smap_init_theta}")
         # log_true_graph(dag_G=dag_W_torch.numpy(), args=args)
 
+        # todo This should be pushed into the main algorithm class
         if args.smap_init_theta == "variances":
             smap_init = get_variances(X_torch)
         else:
@@ -68,8 +71,18 @@ def run(args, wandb_mode):
         else:
             estimator_cls = NNL0Estimator
 
-        model = Daguerreo(args.num_nodes, smap_init=smap_init, estimator_cls=estimator_cls, estimator_kwargs={"linear": not args.nonlinear, "hidden": args.hidden, "activation": torch.nn.functional.leaky_relu})
+        # [Luca] ideally the main algorithm should accept all valid combinations of
+        # the 3 modules + optimization schemes, and that's it :)
+        model = Daguerreo(args.num_nodes, smap_init=smap_init, estimator_cls=estimator_cls,
+                          estimator_kwargs={"linear": not args.nonlinear, "hidden": args.hidden, "activation": torch.nn.functional.leaky_relu})
 
+        # also this could be handled internally by the full algorithm
+        # in the end: if we have one class that represents our algorithm in a framework sense,
+        # this class takes 4 arguments + (extra eventually for data)
+        # - optimization framework: joint | bilevel
+        # - structure learning module: SparseMAP | top-k sparseMAX | ......
+        # - sparsification method
+        # - structural equations
         if args.joint:
             logging.info(" Joint optimization")
 
