@@ -17,8 +17,8 @@ from utils import get_optimizer
 
 # ------------------------------------------------------------------------------------- ORDERINGS
 
-class Masking(nn.Module, ABC):
 
+class Masking(nn.Module, ABC):
     def __init__(self):
 
         super(Masking, self).__init__()
@@ -28,18 +28,19 @@ class Masking(nn.Module, ABC):
         pass
 
     def l2(self):
-        return 0.
+        return 0.0
 
 
 class SparseMapMasking(Masking):
-
     def __init__(self, d, theta_init=None):
 
         super(SparseMapMasking, self).__init__()
 
         if theta_init is not None:
             m = theta_init.median()
-            theta = (theta_init - m).clone().detach() # to have both positive and negative values
+            theta = (
+                (theta_init - m).clone().detach()
+            )  # to have both positive and negative values
 
         else:
             theta = torch.zeros(d)
@@ -47,19 +48,20 @@ class SparseMapMasking(Masking):
         self.theta = nn.Parameter(theta.unsqueeze(1), requires_grad=True)
 
         self.M = torch.triu(torch.ones((d, d)), diagonal=1)
-    
+
     def forward(self, tmp=1e-5, init=False, max_iter=100):
         alphas, orderings = sparse_rank(self.theta / tmp, init=init, max_iter=max_iter)
 
         return alphas, self.M[orderings[..., None], orderings[:, None]]
 
     def l2(self):
-        return torch.sum(self.theta ** 2)
+        return torch.sum(self.theta**2)
+
 
 # ----------------------------------------------------------------------------------- STRUCTURES
 
-class BernoulliStructure(nn.Module):
 
+class BernoulliStructure(nn.Module):
     def __init__(self, d, num_structures=1, initial_value=0.5):
 
         nn.Module.__init__(self)
@@ -68,9 +70,9 @@ class BernoulliStructure(nn.Module):
         self.num_structures = num_structures
 
         self.B = BernoulliSTERoot(
-            (num_structures, d, d), 
-            initial_value=initial_value * torch.ones((num_structures, d, d))
-        ) # a Bernouilli variable per edge
+            (num_structures, d, d),
+            initial_value=initial_value * torch.ones((num_structures, d, d)),
+        )  # a Bernouilli variable per edge
 
     def forward(self, maskings):
 
@@ -78,7 +80,7 @@ class BernoulliStructure(nn.Module):
 
         self.dag_mask = maskings
 
-        sample_b = self.B() # sample 
+        sample_b = self.B()  # sample
 
         return maskings * sample_b
 
@@ -86,13 +88,13 @@ class BernoulliStructure(nn.Module):
 
         masked_theta = self.B.theta * self.dag_mask
 
-        return masked_theta.sum((-2, -1)) # one l0 per structure
+        return masked_theta.sum((-2, -1))  # one l0 per structure
 
 
 # ------------------------------------------------------------------------------------ EQUATIONS
 
-class Equations(nn.Module, ABC):
 
+class Equations(nn.Module, ABC):
     def __init__(self, d):
 
         super(Equations, self).__init__()
@@ -107,18 +109,17 @@ class Equations(nn.Module, ABC):
     def l2(self):
         pass
 
-class LinearEquations(Equations):
 
+class LinearEquations(Equations):
     def __init__(self, d, num_equations=1):
 
         super(LinearEquations, self).__init__(d)
 
-        self.num_equations = num_equations # number of sets of structural equations, for bilevel this is equal to the number of orderings, for joint this is equal to 1
+        self.num_equations = num_equations  # number of sets of structural equations, for bilevel this is equal to the number of orderings, for joint this is equal to 1
 
         self.W = nn.Parameter(
-            torch.randn(num_equations, d, d),
-            requires_grad=True
-        ) # W[:, p, c] one weight from parent p to child c 
+            torch.randn(num_equations, d, d), requires_grad=True
+        )  # W[:, p, c] one weight from parent p to child c
         # W[0]'s column c reconstructs node c
 
     def forward(self, masked_x):
@@ -127,11 +128,13 @@ class LinearEquations(Equations):
 
     def l2(self):
 
-        return torch.sum(self.W ** 2, dim=(-2, -1)) # one l2 per set of equations
+        return torch.sum(self.W**2, dim=(-2, -1))  # one l2 per set of equations
+
 
 class NonLinearEquations(Equations):
-
-    def __init__(self, d, num_equations=1, hidden=2, activation=torch.nn.functional.leaky_relu):
+    def __init__(
+        self, d, num_equations=1, hidden=2, activation=torch.nn.functional.leaky_relu
+    ):
 
         super(NonLinearEquations, self).__init__(d)
 
@@ -139,25 +142,24 @@ class NonLinearEquations(Equations):
         self.hidden = hidden
 
         self.W = nn.Parameter(
-            torch.randn(num_equations, d, d, hidden) * 0.05, #TODO: check for better value of std
-            requires_grad=True
+            torch.randn(num_equations, d, d, hidden)
+            * 0.05,  # TODO: check for better value of std
+            requires_grad=True,
         )
 
         self.bias = nn.Parameter(
-            torch.zeros(num_equations, 1, d, hidden),
-            requires_grad=True
+            torch.zeros(num_equations, 1, d, hidden), requires_grad=True
         )
 
         self.activation = activation
 
         self.final_map = nn.Parameter(
-            torch.randn(num_equations, d, hidden) * 0.05,
-            requires_grad=True
+            torch.randn(num_equations, d, hidden) * 0.05, requires_grad=True
         )
 
     def forward(self, masked_x):
 
-        out = torch.einsum("oncp,opch->onch", masked_x, self.W) #
+        out = torch.einsum("oncp,opch->onch", masked_x, self.W)  #
 
         out = self.activation(out + self.bias)
 
@@ -165,16 +167,17 @@ class NonLinearEquations(Equations):
 
     def l2(self):
 
-        out = torch.sum(self.W ** 2, dim=(-3, -2, -1)) # one l2 per set of equations
-        out += torch.sum(self.bias ** 2, dim=(-3, -2, -1))
-        out += torch.sum(self.final_map ** 2, dim=(-2, -1))
+        out = torch.sum(self.W**2, dim=(-3, -2, -1))  # one l2 per set of equations
+        out += torch.sum(self.bias**2, dim=(-3, -2, -1))
+        out += torch.sum(self.final_map**2, dim=(-2, -1))
 
         return out
 
+
 # ---------------------------------------------------------------------------------- ESTIMATORS
 
-class Estimator(ABC):
 
+class Estimator(ABC):
     def __init__(self):
         pass
 
@@ -189,8 +192,8 @@ class Estimator(ABC):
     def project(self):
         pass
 
-class LARS(Estimator):
 
+class LARS(Estimator):
     def __init__(self, d, *args, **kwargs):
 
         self.d = d
@@ -201,11 +204,11 @@ class LARS(Estimator):
     def fit(self, x, maskings, *args):
 
         LR = LinearRegression(normalize=False, n_jobs=1)
-        LL = LassoLarsIC(criterion='bic', normalize=False)
+        LL = LassoLarsIC(criterion="bic", normalize=False)
 
         x_numpy = x.detach().numpy()
         masks_numpy = maskings.long().detach().numpy()
-        
+
         self.W = np.zeros((len(masks_numpy), self.d, self.d))
 
         for m, mask in enumerate(masks_numpy):
@@ -213,7 +216,7 @@ class LARS(Estimator):
 
                 covariates = np.nonzero(mask[:, target])[0]
 
-                if len(covariates) > 0: # if target is not a root node
+                if len(covariates) > 0:  # if target is not a root node
 
                     LR.fit(x_numpy[:, covariates], x_numpy[:, target].ravel())
                     weight = np.abs(LR.coef_)
@@ -228,24 +231,38 @@ class LARS(Estimator):
     def get_structure(self, *args):
         return self.W != 0
 
-class NNL0Estimator(Estimator, nn.Module):
 
-    def __init__(self, d, num_structures, bernouilli_init=0.5, linear=True, hidden=1, activation=torch.nn.functional.leaky_relu):
+class NNL0Estimator(Estimator, nn.Module):
+    def __init__(
+        self,
+        d,
+        num_structures,
+        bernouilli_init=0.5,
+        linear=True,
+        hidden=1,
+        activation=torch.nn.functional.leaky_relu,
+    ):
 
         nn.Module.__init__(self)
         # TODO: rename to sparsity
-        self.structure = BernoulliStructure(d, num_structures, initial_value=bernouilli_init)
+        self.structure = BernoulliStructure(
+            d, num_structures, initial_value=bernouilli_init
+        )
 
         if linear:
             self.equations = LinearEquations(d, num_structures)
         else:
-            self.equations = NonLinearEquations(d, num_structures, hidden=hidden, activation=activation)
+            self.equations = NonLinearEquations(
+                d, num_structures, hidden=hidden, activation=activation
+            )
 
     def forward(self, x, maskings):
-        
+
         dags = self.structure(maskings)
 
-        masked_x = torch.einsum("opc,np->oncp", dags, x) # for each ordering (o), data point (i) and node (c): vector v, with v_p = x_ip if p is potentially a parent of c, 0 otherwise
+        masked_x = torch.einsum(
+            "opc,np->oncp", dags, x
+        )  # for each ordering (o), data point (i) and node (c): vector v, with v_p = x_ip if p is potentially a parent of c, 0 otherwise
 
         x_hat = self.equations(masked_x)
 
@@ -261,8 +278,8 @@ class NNL0Estimator(Estimator, nn.Module):
 
         # inner loop
         for inner_iters in range(args.num_inner_iters):
-            
-            x_hat = self(x, maskings) # (num_structures, n, d)
+
+            x_hat = self(x, maskings)  # (num_structures, n, d)
 
             objective = loss(x_hat, x, dim=(-2, -1))
             objective += args.pruning_reg * self.pruning() + args.l2_reg * self.l2()
@@ -287,6 +304,15 @@ class NNL0Estimator(Estimator, nn.Module):
 
     def get_structure(self, masking):
         return self.structure(masking)
+
+
+def get_estimator_cls(estimator: str):
+    # TODO: add nonlinear estimator
+    if estimator == "LARS":
+        estimator_cls = LARS
+    else:
+        estimator_cls = NNL0Estimator
+    return estimator_cls
 
 
 if __name__ == "__main__":

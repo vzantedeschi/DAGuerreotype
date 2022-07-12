@@ -1,6 +1,7 @@
 import argparse
 from typing import Tuple
 
+
 def parse_default_data_gen_args(
     argparser: argparse.ArgumentParser = None,
 ) -> Tuple[argparse.Namespace, argparse.ArgumentParser]:
@@ -10,7 +11,12 @@ def parse_default_data_gen_args(
     )
 
     augmented_parser.add_argument("--project", type=str, default="dag")
-    augmented_parser.add_argument("--wandb", default=False, action="store_true", help="whether logging in wandb console")
+    augmented_parser.add_argument(
+        "--wandb",
+        default=False,
+        action="store_true",
+        help="whether logging in wandb console",
+    )
 
     augmented_parser.add_argument(
         "--results_path",
@@ -97,6 +103,7 @@ def parse_default_data_gen_args(
     args, _ = augmented_parser.parse_known_args()
     return args, augmented_parser
 
+
 def parse_default_model_args(
     argparser: argparse.ArgumentParser = None,
 ) -> Tuple[argparse.Namespace, argparse.ArgumentParser]:
@@ -117,7 +124,12 @@ def parse_default_model_args(
         ],
     )
 
-    parser.add_argument("--joint", default=False, action="store_true", help="whether optimizing ordering and graph jointly (alternated) or with bi-level formulation")
+    parser.add_argument(
+        "--joint",
+        default=False,
+        action="store_true",
+        help="whether optimizing ordering and graph jointly (alternated) or with bi-level formulation",
+    )
 
     parser.add_argument(
         "--estimator",
@@ -130,7 +142,10 @@ def parse_default_model_args(
     )
 
     parser.add_argument(
-        "--fixed_perm", type=str, default="variances", choices=["optimal", "variances"] # TODO: add random ordering
+        "--fixed_perm",
+        type=str,
+        default="variances",
+        choices=["optimal", "variances"],  # TODO: add random ordering
     )
 
     # -------------------------------------------------- MLP --------------------------------------------------
@@ -138,9 +153,12 @@ def parse_default_model_args(
     parser.add_argument(
         "--hidden", type=int, default=10, help="Dimensions of hidden layers"
     )
-    
+
     parser.add_argument(
-        "--nonlinear", default=False, action="store_true", help="whether use nonlinear graph"
+        "--nonlinear",
+        default=False,
+        action="store_true",
+        help="whether use nonlinear graph",
     )
 
     # -------------------------------------------------- Training --------------------------------------------------
@@ -166,11 +184,13 @@ def parse_default_model_args(
         "--pruning_reg", type=float, default=0.01, help="pruning penalty over graph"
     )
     parser.add_argument(  # use l2_reg instead
-        "--l2_reg", type=float, default=0.1, help="l2 penalty over all model weights (not graph)"
+        "--l2_reg",
+        type=float,
+        default=0.1,
+        help="l2 penalty over all model weights (not graph)",
     )
     parser.add_argument("--num_epochs", type=int, default=1000)
     parser.add_argument("--num_inner_iters", type=int, default=100)
-
 
     argparser.add_argument(
         "--nev",

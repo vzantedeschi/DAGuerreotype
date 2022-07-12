@@ -1,15 +1,37 @@
+import logging
 import random
 from typing import Iterable
-import wandb
-import logging
-
-import numpy as np
-
-import torch
-from torch.optim import LBFGS, SGD, Adam, AdamW, Optimizer
 
 import networkx as nx
+import numpy as np
+import torch
+import wandb
 from matplotlib import pyplot as plt
+from torch.optim import LBFGS, SGD, Adam, AdamW, Optimizer
+from pathlib import Path
+
+
+def get_wandb_mode(args):
+    if not args.wandb:
+        logging.getLogger().setLevel(logging.INFO)
+        wandb_mode = "disabled"
+    else:
+        logging.getLogger().setLevel(logging.WARNING)
+        wandb_mode = None
+    return wandb_mode
+
+def get_group_name(args):
+    # experiment naming
+    try:
+        group_name = f"{args.model}-{args.graph_type}-{args.sem_type}-{args.num_nodes}-{args.num_samples}"  # for synthetic data
+    except:
+        group_name = f"{args.model}-{args.dataset}-nonlin={args.nonlinear}-std={args.standardize}"  # for real data
+    return group_name
+
+def init_project_path(args):
+    project = f"{args.project}"
+    project_path = Path(args.results_path) / project
+    project_path.mkdir(parents=True, exist_ok=True)
 
 def init_seeds(seed: int) -> None:
     torch.manual_seed(seed)
@@ -17,16 +39,14 @@ def init_seeds(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
     random.seed(seed)
 
+
 def get_variances(X):
     return torch.var(X, dim=0, unbiased=False)
 
+
 def get_optimizer(params: Iterable, name: str, lr: float) -> Optimizer:
-    
-    str_to_optim = {
-        "sgd": SGD,
-        "adam": Adam,
-        "adamW": AdamW
-    }
+
+    str_to_optim = {"sgd": SGD, "adam": Adam, "adamW": AdamW}
 
     try:
 
@@ -34,24 +54,26 @@ def get_optimizer(params: Iterable, name: str, lr: float) -> Optimizer:
 
     except Exception:
 
-        raise NotImplementedError(
-            f"The specified optimizer {name} is not implemented!"
-        )
+        raise NotImplementedError(f"The specified optimizer {name} is not implemented!")
 
     return optim(params=params, lr=lr)
 
+
 # --------------------------------------------------------- LOSSES
+
 
 def nll_ev(output, target, dim=(-2, -1)):
     "negative log likelihood for Daguerro with equal variance"
-    
+
     loss = (output - target).square()
     loss = loss.sum(dim=dim)
 
     result = torch.log(loss) * target.shape[-1] / 2
     return result
 
+
 # -------------------------------------------------------- DAG UTILS
+
 
 def get_topological_rank(graph: np.array) -> np.array:
 
@@ -65,6 +87,7 @@ def get_topological_rank(graph: np.array) -> np.array:
             rank[node] = l
 
     return rank
+
 
 def plot_DAG(graph: np.ndarray, name: str) -> None:
 
@@ -102,6 +125,7 @@ def plot_DAG(graph: np.ndarray, name: str) -> None:
     wandb.log({f"nx-graph-{name}": wandb.Image(plt)})
 
     return a_dag
+
 
 def log_graph(dag_G: np.ndarray, name: str) -> None:
     a_dag = plot_DAG(dag_G, name)

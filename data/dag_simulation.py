@@ -10,6 +10,7 @@ import numpy as np
 from scipy.special import expit as sigmoid
 from sklearn.gaussian_process import GaussianProcessRegressor
 
+
 def is_dag(W: np.ndarray) -> bool:
     G = ig.Graph.Weighted_Adjacency(W.tolist())
     return G.is_dag()
@@ -234,10 +235,7 @@ def simulate_nonlinear_sem(
 
 
 def sample_data(
-    B: np.ndarray,
-    num_samples: int,
-    sem_type: str,
-    noise_scale: float
+    B: np.ndarray, num_samples: int, sem_type: str, noise_scale: float
 ) -> Tuple[np.ndarray, np.ndarray]:
 
     if sem_type in [

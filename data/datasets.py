@@ -1,14 +1,11 @@
 import math
+
 import numpy as np
-
 import torch
-
 from sklearn.preprocessing import StandardScaler
 
-from data.dag_simulation import (
-    sample_data,
-    simulate_dag,
-)
+from data.dag_simulation import sample_data, simulate_dag
+
 
 def get_synthetic_dataset(args, *a):
     dag_B = simulate_dag(
@@ -32,13 +29,15 @@ def get_sachs_dataset(args_ns, *a):
 
     return dag_B, dag_B, data
 
+
 def get_syntren_dataset(args_ns, seed=1):
 
     seed = np.clip(seed, 1, 10)
     data = np.load(f"./data/syntren/data{seed}.npy")
     dag_B = np.load(f"./data/syntren/DAG{seed}.npy")
-    
+
     return dag_B, dag_B, data
+
 
 def get_dataset(args, to_torch=True, seed=1):
     # TODO: load cpdag as well

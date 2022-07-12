@@ -4,6 +4,7 @@ from utils import get_topological_rank
 
 # -------------------------------------------------------------------------- METRICS
 
+
 def count_accuracy(B_true: np.ndarray, B_est: np.ndarray) -> dict:
     """Compute various accuracy metrics for B_est.
 
@@ -62,15 +63,17 @@ def topological_rank_corr(B_true: np.ndarray, B_est: np.ndarray) -> dict:
 
     true_rank = get_topological_rank(B_true)
     est_rank = get_topological_rank(B_est)
-    
+
     coeff = np.corrcoef(true_rank, est_rank)[0, 1]
 
     if np.isnan(coeff):
-        coeff = 0.
+        coeff = 0.0
 
     return {"topc": coeff}
 
+
 # ------------------------------------------------------------------ DAG EVALUATION
+
 
 def evaluate_binary(true_B, estimated_B):
 
