@@ -115,7 +115,8 @@ class LinearEquations(Equations):
 
         super(LinearEquations, self).__init__(d)
 
-        self.num_equations = num_equations  # number of sets of structural equations, for bilevel this is equal to the number of orderings, for joint this is equal to 1
+        self.num_equations = num_equations  # number of sets of structural equations,
+        # for bilevel this is equal to the number of orderings, for joint this is equal to 1
 
         self.W = nn.Parameter(
             torch.randn(num_equations, d, d), requires_grad=True
@@ -123,7 +124,9 @@ class LinearEquations(Equations):
         # W[0]'s column c reconstructs node c
 
     def forward(self, masked_x):
-
+        # [orderings, number of points, "child node", "parent node"],
+        # [orderings, weight of parent node, weight of child node ]
+        # result_onc = \sum_p X_oncp * W_opc
         return torch.einsum("oncp,opc->onc", masked_x, self.W)
 
     def l2(self):

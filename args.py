@@ -158,7 +158,7 @@ def parse_default_model_args(
         "--nonlinear",
         default=False,
         action="store_true",
-        help="whether use nonlinear graph",
+        help="whether use nonlinear graph",  # TODO what is this?
     )
 
     # -------------------------------------------------- Training --------------------------------------------------
