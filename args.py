@@ -234,4 +234,4 @@ def parse_pipeline_args() -> argparse.Namespace:
     _, argparser = parse_default_data_gen_args(argparser=argparser)
     _, argparser = parse_default_model_args(argparser=argparser)
 
-    return argparser.parse_args()
+    return argparser

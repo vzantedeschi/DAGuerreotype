@@ -106,7 +106,8 @@ if __name__ == "__main__":
 
     torch.set_default_dtype(torch.double)
 
-    args = parse_pipeline_args()
+    argparser = parse_pipeline_args()
+    args = argparser.parse_args()
 
     wandb_mode = get_wandb_mode(args)
     init_project_path(args=args)
