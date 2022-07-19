@@ -3,16 +3,59 @@ import wandb
 from torch import nn
 from tqdm import tqdm
 
-from modules import NNL0Estimator, SparseMapMasking
+from typing import Type, Optional
+
+from modules import NNL0Estimator, SparseMapMasking, _DagMod, Structure, Sparsifier, Equations, SparseMapSVStructure
 from utils import get_optimizer, get_variances
 
 
-class Daguerreo(nn.Module):
+
+# TODO do we need this to subclass nn.Module?
+class Daguerro(_DagMod):
+
+    def __init__(self, structure: Structure,
+                 sparsifier: Optional[Sparsifier],
+                 equations: Equations) -> None:
+        super(Daguerro, self).__init__()
+        self.structure = structure
+        self.sparsifier = sparsifier
+        self.equations = equations
+
+    @classmethod
+    def initialize(cls, X, args, bilevel):
+        super().initialize(X, args, bilevel)
+
+
+    def forward(self, X, loss, args):
+        if self.training:
+            return self._learn(X, loss, args)
+        else:
+            return self._eval(X, loss, args)
+
+    def _learn(self, X, loss, args): pass
+
+    def _eval(self, X, loss, args): pass
+
+
+class DaguerroJoint(Daguerro):
+
+    def _learn(self, X, loss, args):
+        self.apply(lambda mod: mod.initialize(X, args, False))
+        pass
+
+
+if __name__ == '__main__':
+    print('starting')
+    dag = DaguerroJoint(SparseMapSVStructure, None, Equations)
+    dag(None, None, None)
+
+
+class DaguerreoOld(nn.Module):
     def __init__(
         self, d, X_torch, smap_init_theta:str, estimator_cls=NNL0Estimator, estimator_kwargs=None
     ):
 
-        super(Daguerreo, self).__init__()
+        super(DaguerreoOld, self).__init__()
 
         if smap_init_theta == "variances":
             smap_init = get_variances(X_torch)

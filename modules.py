@@ -13,7 +13,135 @@ from torch import nn
 
 from bernouilli import BernoulliSTERoot
 from ranksp.ranksp import sparse_rank
-from utils import get_optimizer
+from utils import get_optimizer, get_variances
+
+
+class _DagMod(nn.Module):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    @classmethod
+    def initialize(cls, X, args, bilevel):
+        pass
+
+    def regularizer(self): return 0
+
+
+class Structure(_DagMod):
+
+    def forward(self):
+        """This is for the unconditional computation of a probability distribution over complete DAG structures."""
+        pass
+
+
+class _ScoreVectorStructure(Structure):
+
+    def __init__(self, d, theta_init) -> None:
+        super().__init__()
+        self.theta = torch.nn.Parameter(theta_init.unsqueeze(1), requires_grad=True)
+        self.M = torch.triu(torch.ones((d, d)), diagonal=1)
+
+    @classmethod
+    def initialize(cls, X, args, bilevel):
+        d = X.shape[1]  # number of features= number of nodes
+
+        # initialize the parameter score vector
+        if args.smap_init_theta == "variances":
+            theta_init = get_variances(X)
+            m = theta_init.median()
+            theta_init = (
+                (theta_init - m).clone().detach()
+            )
+        else:
+            theta_init = torch.zeros(d)
+        return cls(d, theta_init)
+
+
+class SparseMapSVStructure(_ScoreVectorStructure):
+    """
+    Class for learning the score vector with the sparseMAP operator.
+    """
+
+    def forward(self):
+        # call the sparseMAP rank procedure, it returns a vector of probabilities and one of sorted indices,
+        # FIXME re-check if indieces are in ascending or descending order!!!!!!
+        alphas, orderings = sparse_rank(
+            self.theta / self.args.smap_tmp,  # the actual parameter, this is a good place to do perturb & map insted
+            init=self.args.smap_init, max_iter=self.args.smap_iter)
+        # TODO possibly add eval branch that returns the MAP here, although - not so sure why we should take the MAP,
+        #  can't we keep the probability distribution also at eval time?
+        return alphas, self.M[orderings[..., None], orderings[:, None]]
+
+    def regularizer(self):
+        return self.args.l2_reg * (self.theta**2).sum()
+
+
+class TopKSparseMaxSVStructure(_ScoreVectorStructure):
+    # TODO
+    pass
+
+
+class Sparsifier(_DagMod):
+    pass
+
+class _L0Sparsifier(Sparsifier):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.pi = None
+        self.complete_dags = None
+
+    def regularizer(self):
+        """This is the """
+        masked_reg = torch.abs(self.pi) * self.complete_dags
+        return self.args.pruning_reg * masked_reg.sum((1, 2))
+
+
+class BernoulliSTEL0Sparsifier(_L0Sparsifier):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.ber_ste_op = None
+
+    def initialize(self, X, args, bilevel):
+        super().initialize(X, args, False)
+
+
+class BernoulliStructure(nn.Module):
+    def __init__(self, d, num_structures=1, initial_value=0.5):
+
+        nn.Module.__init__(self)
+
+        self.d = d
+        self.num_structures = num_structures
+
+        self.B = BernoulliSTERoot(
+            (num_structures, d, d),
+            initial_value=initial_value * torch.ones((num_structures, d, d)),
+        )  # a Bernouilli variable per edge
+
+    def forward(self, maskings):
+
+        assert maskings.shape[0] == self.num_structures or self.num_structures == 1
+
+        self.dag_mask = maskings
+
+        sample_b = self.B()  # sample
+
+        return maskings * sample_b
+
+    def l0(self):
+
+        masked_theta = self.B.theta * self.dag_mask
+
+        return masked_theta.sum((-2, -1))  # one l0 per structure
+
+class Equations(_DagMod):
+    pass
+
+# ---- previous stuff  -----
+
 
 # ------------------------------------------------------------------------------------- ORDERINGS
 

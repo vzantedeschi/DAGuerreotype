@@ -6,7 +6,7 @@ import wandb
 from args import parse_pipeline_args
 from data.datasets import get_dataset
 from evaluation import evaluate_binary
-from models import Daguerreo
+from models import DaguerreoOld
 from modules import LARS, NNL0Estimator, get_estimator_cls
 from utils import (get_group_name, get_wandb_mode, init_project_path,
                    init_seeds, log_graph, nll_ev)
@@ -53,7 +53,7 @@ def run(args, wandb_mode):
 
         # [Luca] ideally the main algorithm should accept all valid combinations of
         # the 3 modules + optimization schemes, and that's it :)
-        model = Daguerreo(
+        model = DaguerreoOld(
             d=args.num_nodes,
             X_torch=X_torch,
             smap_init_theta=args.smap_init_theta,
