@@ -5,50 +5,185 @@ from tqdm import tqdm
 
 from typing import Type, Optional
 
-from modules import NNL0Estimator, SparseMapMasking, _DagMod, Structure, Sparsifier, Equations, SparseMapSVStructure
+from modules import NNL0Estimator, SparseMapMasking, Structure, Sparsifier, \
+    Equations
 from utils import get_optimizer, get_variances
-
+from itertools import chain
 
 
 # TODO do we need this to subclass nn.Module?
-class Daguerro(_DagMod):
+class Daguerro(torch.nn.Module):
 
     def __init__(self, structure: Structure,
-                 sparsifier: Optional[Sparsifier],
+                 sparsifier: Sparsifier,
                  equations: Equations) -> None:
         super(Daguerro, self).__init__()
         self.structure = structure
         self.sparsifier = sparsifier
         self.equations = equations
 
-    @classmethod
-    def initialize(cls, X, args, bilevel):
-        super().initialize(X, args, bilevel)
-
+    @staticmethod
+    def initialize(X, args, bilevel=False):
+        dag_cls = DaguerroBilevel if bilevel else DaguerroJoint
+        # INFO: initialization is deferred to the specific methods to deal with all the modules'
+        # hyperparameters inplace
+        structure = args.structure.initialize(X, args)  # there's no difference between bilevel and joint opt here
+        sparsifier = args.sparsifier.initialize(X, args, bilevel)
+        equations = args.equations.initialize(X, args, bilevel)
+        return dag_cls(structure, sparsifier, equations)
 
     def forward(self, X, loss, args):
+        # TODO remove args from here and push everything to the initialize method,
+        #  the rationale is that in this way one can also run the algorithm not form the CLI!
+        #  as it stands it is very complicated to do that!
         if self.training:
             return self._learn(X, loss, args)
         else:
             return self._eval(X, loss, args)
 
-    def _learn(self, X, loss, args): pass
+    def _learn(self, X, loss, args): raise NotImplementedError()
 
-    def _eval(self, X, loss, args): pass
+    def _eval(self, X, loss, args): raise NotImplementedError()
 
 
 class DaguerroJoint(Daguerro):
 
     def _learn(self, X, loss, args):
-        self.apply(lambda mod: mod.initialize(X, args, False))
+        # here all should be initialized
+        log_dict = {}
+
+        optimizer = get_optimizer(self.parameters(), name=args.optimizer, lr=args.lr)
+
+        pbar = tqdm(range(args.num_epochs))
+
+        # outer loop
+        for epoch in pbar:
+
+            optimizer.zero_grad()
+
+            # INFO: main calls, note that here all the regularization terms are computed by the respective modules
+            alphas, complete_dags, structure_reg = self.structure()
+            dags, sparsifier_reg = self.sparsifier(complete_dags)
+            x_hat, dags, equations_reg = self.equations(X, dags)
+
+            rec_loss = loss(x_hat, X, dim=(-2, -1))
+
+            #  here we weight also the regularizers by the alphas, can discuss about this...
+            #  but I think this is correct. The structure regularizer is instead unweighted as it is a global one
+            objective = alphas @ (rec_loss + sparsifier_reg + equations_reg) + structure_reg
+
+            objective.backward()
+
+            optimizer.step()
+
+            pbar.set_description(
+                f"objective {objective.item():.2f} | ns {len(complete_dags)} | "
+                f"theta norm {self.structure.theta.norm():.4f}"
+            )
+
+            log_dict = {
+                "epoch": epoch,
+                # "number of orderings": num_orderings,
+                "objective": objective.item(),
+                # "expected loss": exp_loss.item(),
+                # "expected l0": exp_l0.item(),
+            }
+            # TODO should be able to exclude wandb if don't want to use it :)
+            wandb.log(log_dict)
+
+            print(self.structure.theta)
+
+        return log_dict
+
+    def _eval(self, X, loss, args):
         pass
 
 
-if __name__ == '__main__':
-    print('starting')
-    dag = DaguerroJoint(SparseMapSVStructure, None, Equations)
-    dag(None, None, None)
+class DaguerroBilevel(Daguerro):
 
+    def _learn(self, X, loss, args):
+        log_dict = {}
+
+        optimizer = get_optimizer(self.structure.parameters(), name=args.optimizer, lr=args.lr)
+
+        pbar = tqdm(range(args.num_epochs))
+
+        # outer loop
+        for epoch in pbar:
+            optimizer.zero_grad()
+
+            # INFO: main calls, note that here all the regularization terms are computed by the respective modules
+            alphas, complete_dags, structure_reg = self.structure()
+
+            # initialization for the bilevel part
+            sparsifier = self.sparsifier.bl_initialize(complete_dags)
+            equations = self.equations.bl_initialize(complete_dags)
+
+            # todo here there's a soso branching, but not ideas how to get it better.
+            #  also, can't think of any potential case where the inner part is a full algo but we still might want
+            #  a sparsifier.... so for the time being I'm just ignoring the sparsifier
+            if self.equations.is_complete_algorithm():
+                x_hat, dags, reg = equations(X, complete_dags)
+                # TODO maybe call eval here as well also for the complete algorithms
+            else:  # GD to optimize the parameters of the equation models and potentially of the sparsifier
+                inner_vars = chain(equations.parameters(), sparsifier.parameters())
+                # todo also here we'd better decouple the hyperparameters
+                inner_opt = get_optimizer(inner_vars, name=args.optimizer, lr=args.lr)
+                for inner_iters in range(args.num_inner_iters):
+                    inner_opt.zero_grad()
+
+                    dags, sparsifier_reg = sparsifier(complete_dags)
+                    x_hat, dags, equations_reg = equations(X, dags)
+
+                    inner_objective = loss(x_hat, X, dim=(1, 2)) + sparsifier_reg + equations_reg
+                    inner_objective.sum().backward()
+
+                    inner_opt.step()
+
+                # now evaluate the optimized methods
+                equations.eval()
+                sparsifier.eval()
+
+                # this now will return the MAP if using L0 STE Bernoulli, not sure what we were doing previously :)
+                dags, sparsifier_reg = sparsifier(complete_dags)
+                x_hat, dags, equations_reg = equations(X, dags)
+
+            # and now it's done :)
+            final_inner_loss = loss(x_hat, X, dim=(1, 2))
+
+            # only final loss should count! to this, we just add the regularization from above
+            objective = alphas @ final_inner_loss + structure_reg
+            objective.backward()
+
+            optimizer.step()
+
+            # ----- one outer step is done, logging below ------
+
+            pbar.set_description(
+                f"objective {objective.item():.2f} | ns {len(complete_dags)} | "
+                f"theta norm {self.structure.theta.norm():.4f}"
+            )
+
+            log_dict = {
+                "epoch": epoch,
+                # "number of orderings": num_orderings,
+                "objective": objective.item(),
+                # "expected loss": exp_loss.item(),
+                # "expected l0": exp_l0.item(),
+            }
+            # TODO should be able to exclude wandb if don't want to use it :)
+            wandb.log(log_dict)
+
+            print(self.structure.theta)
+
+        return log_dict
+
+    def _eval(self, X, loss, args):
+        # todo THIS PROBABLY WILL BE THE SAME as the joint optimization
+        pass
+
+
+#  ---- old implementation -------------
 
 class DaguerreoOld(nn.Module):
     def __init__(
@@ -155,6 +290,9 @@ class DaguerreoOld(nn.Module):
             exp_loss = alphas @ loss(x_hat, x, dim=(-2, -1))
             exp_l0 = alphas @ self.estimator.pruning()
             theta_norm = self.smap_masking.l2()
+
+            # FIXME I think we should have 2 hyperparameters here, one for the
+            #  theta L2 norm and one for the equations
             l2 = theta_norm + self.estimator.l2().sum()
 
             objective = exp_loss + args.pruning_reg * exp_l0 + args.l2_reg * l2

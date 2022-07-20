@@ -6,7 +6,7 @@ import wandb
 from args import parse_pipeline_args
 from data.datasets import get_dataset
 from evaluation import evaluate_binary
-from models import DaguerreoOld
+from models import DaguerreoOld, Daguerro
 from modules import LARS, NNL0Estimator, get_estimator_cls
 from utils import (get_group_name, get_wandb_mode, init_project_path,
                    init_seeds, log_graph, nll_ev)
@@ -49,57 +49,25 @@ def run(args, wandb_mode):
         )
         # log_true_graph(dag_G=dag_W_torch.numpy(), args=args)
 
-        estimator_cls = get_estimator_cls(args.estimator)
+        # estimator_cls = get_estimator_cls(args.estimator)
+        daguerro = Daguerro.initialize(X_torch, args, args.bilevel)
 
-        # [Luca] ideally the main algorithm should accept all valid combinations of
-        # the 3 modules + optimization schemes, and that's it :)
-        model = DaguerreoOld(
-            d=args.num_nodes,
-            X_torch=X_torch,
-            smap_init_theta=args.smap_init_theta,
-            estimator_cls=estimator_cls,
-            estimator_kwargs={
-                "linear": not args.nonlinear,
-                "hidden": args.hidden,
-                "activation": torch.nn.functional.leaky_relu,
-            },
-        )
+        training_log = daguerro(X_torch, nll_ev, args)
+        print(training_log)
 
-        # also this could be handled internally by the full algorithm
-        # in the end: if we have one class that represents our algorithm in a framework sense,
-        # this class takes 4 arguments + (extra eventually for data)
-        # - optimization framework: joint | bilevel
-        # - structure learning module: SparseMAP | top-k sparseMAX | ......
-        # - sparsification method
-        # - structural equations
-        if args.joint:
-            logging.info(" Joint optimization")
-
-            assert (
-                args.estimator != "LARS"
-            ), "joint optimization not available for LARS estimator"
-
-            log_dict = model.joint_optimization(X_torch, nll_ev, args)
-        else:
-            logging.info(" Bi-level optimization")
-
-            log_dict = model.bilevel_optimization(X_torch, nll_ev, args)
-
-        model.fit_mode(X_torch, nll_ev, args)
-
-        # evaluate
-        estimated_B = model.get_binary_adj().detach().numpy()
-
-        log_graph(estimated_B, "learned")
-
-        log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
-
-        wandb.log(log_dict)
-        logging.info(log_dict)
-        wandb_run.finish()
-
-        # print(model.get_graph())
-        # np.save(name_path, W_learned) # TODO: save whole model
+        # --- todo eval part below is to be done!~
+        # model.fit_mode(X_torch, nll_ev, args)
+        #
+        # # evaluate
+        # estimated_B = model.get_binary_adj().detach().numpy()
+        #
+        # log_graph(estimated_B, "learned")
+        #
+        # log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
+        #
+        # wandb.log(log_dict)
+        # logging.info(log_dict)
+        # wandb_run.finish()
 
 
 if __name__ == "__main__":

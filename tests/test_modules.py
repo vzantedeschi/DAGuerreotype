@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from modules import NNL0Estimator, NonLinearEquations
+from modules import NNL0Estimator, NonLinearEquationsOld
 
 
 class TestNNL0Estimator(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestNNL0Estimator(unittest.TestCase):
         M = torch.triu(torch.ones((4, 4)), diagonal=1)
         Mp = M[inverse_ordering[..., None], inverse_ordering[:, None]]
 
-        nonlinear_equations = NonLinearEquations(4, num_equations=1, hidden=10)
+        nonlinear_equations = NonLinearEquationsOld(4, num_equations=1, hidden=10)
 
         masked_x = torch.einsum(
             "opc,np->oncp", Mp, x

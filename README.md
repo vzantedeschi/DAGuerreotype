@@ -1,5 +1,21 @@
 # discrete DAG learning
 
+NOTE: big refactoring on this branch, it's still WIP but it executes.
+
+For joint optimization run with default args
+
+```bash
+python run_model.py
+```
+
+For bilevel just add the --bilevel argument. 
+```bash
+python run_model.py --bilevel
+```
+
+Haven't tried much stuff yet except for the defaults. 
+And no cleanup done! 
+
 ## Installation instructions
 
 Get `python>=3.9`, on Mac `python=3.8` did not work.

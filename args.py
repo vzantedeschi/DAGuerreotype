@@ -1,5 +1,34 @@
 import argparse
 from typing import Tuple
+from collections import namedtuple
+
+import modules as m
+
+
+# utils methods for having a nice and fancy argparse. I hope this does not break
+# anything down the line, otherwise we can have also another solution.
+# In this way, choices are printed correctly as strings, but are converted nicely to
+# the right object, so we can define complex "choice-type" options here in this file
+# rather than all around the code base.
+
+_FPC = namedtuple('_FPC', ['type', 'choices'])
+
+class _CCC(list):  # choice class container
+
+    def __init__(self, cls_dictionary: dict) -> None:
+        super().__init__(cls_dictionary.keys())
+        self.objects = list(cls_dictionary.values())
+
+    def __contains__(self, item):
+        return item in self.objects
+
+
+def fancy_parser_choices(shorthands_values_dict):
+    def type_converter(string):
+        try: return shorthands_values_dict[string]
+        except KeyError: raise ValueError()
+    return _FPC(type_converter, _CCC(shorthands_values_dict))
+
 
 
 def parse_default_data_gen_args(
@@ -132,6 +161,13 @@ def parse_default_model_args(
     )
 
     parser.add_argument(
+        "--bilevel",
+        default=False,
+        action="store_true",
+        help="whether optimizing ordering and graph jointly (alternated) or with bi-level formulation",
+    )
+
+    parser.add_argument(
         "--estimator",
         type=str,
         default="LARS",
@@ -140,6 +176,44 @@ def parse_default_model_args(
             "NN",
         ],
     )
+
+    # we could also put the dictionary in the same file as the class.
+    # not sure what's clearer.
+    # TODO probably merge with other type of structures, like fixed, oracle, or random
+    structures = fancy_parser_choices(
+        {'sp_map': m.SparseMapSVStructure,
+         'tk_sp_max': m.TopKSparseMaxSVStructure}
+    )
+    parser.add_argument(
+        "--structure",
+        type=structures.type,
+        default=m.SparseMapSVStructure,
+        choices=structures.choices
+    )
+
+    sparsifiers = fancy_parser_choices(
+        {'l0_ber_ste': m.BernoulliSTEL0Sparsifier,
+         'l0_hc': m.HardConcreteL0Sparsifier,
+         'none': m.NoSparsifier}
+    )
+    parser.add_argument(
+        "--sparsifier",
+        type=sparsifiers.type,
+        default=m.BernoulliSTEL0Sparsifier,
+        choices=sparsifiers.choices
+    )
+
+    equations = fancy_parser_choices(
+        {'lars': m.LARSAlgorithm,
+         'linear': m.LinearEquations}
+    )
+    parser.add_argument(
+        "--equations",
+        type=equations.type,
+        default=m.LinearEquations,
+        choices=equations.choices
+    )
+
 
     parser.add_argument(
         "--fixed_perm",
@@ -161,7 +235,7 @@ def parse_default_model_args(
         help="whether use nonlinear graph",  # TODO what is this?
     )
 
-    # -------------------------------------------------- Training --------------------------------------------------
+    # -------------------------------------------------- Training ---------------------------------------------
     parser.add_argument(
         "--optimizer",
         default="adam",
@@ -184,11 +258,18 @@ def parse_default_model_args(
         "--pruning_reg", type=float, default=0.01, help="pruning penalty over graph"
     )
     parser.add_argument(  # use l2_reg instead
-        "--l2_reg",
+        "--l2_theta",
         type=float,
-        default=0.1,
-        help="l2 penalty over all model weights (not graph)",
+        default=0.01,
+        help="l2 penalty for the structure vector",
     )
+    parser.add_argument(  # use l2_reg instead
+        "--l2_eq",
+        type=float,
+        default=0.001,
+        help="l2 penalty over all models weights (not graph)",
+    )
+
     parser.add_argument("--num_epochs", type=int, default=1000)
     parser.add_argument("--num_inner_iters", type=int, default=100)
 
@@ -227,7 +308,7 @@ def parse_default_model_args(
     return args, parser
 
 
-def parse_pipeline_args() -> argparse.Namespace:
+def parse_pipeline_args() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser(description="Benchmarking Pipeline")
     argparser.add_argument("--num_seeds", type=int, default=10)
 
