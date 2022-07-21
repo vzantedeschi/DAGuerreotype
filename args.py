@@ -4,6 +4,7 @@ from collections import namedtuple
 
 import modules as m
 
+# todo cleanup args
 
 # utils methods for having a nice and fancy argparse. I hope this does not break
 # anything down the line, otherwise we can have also another solution.
