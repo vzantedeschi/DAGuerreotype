@@ -1,13 +1,18 @@
+import warnings
 from abc import ABC
 from itertools import chain
 
 import torch.nn
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LinearRegression, LassoLarsIC
 import numpy as np
 from torch import nn
 
 import utils
 from sparsifiers import Sparsifier
+
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 class Equations(torch.nn.Module):
@@ -115,13 +120,12 @@ class ParametricGDFitting(Equations, ABC):
         return cls(X.shape[1], 1 if joint else None,
                    **cls._hps_from_args(args))
 
-    @classmethod   # TODO ideally this should be the other way around... args from hp!
+    @classmethod   # TODO this should be the other way around... namely construct the parser and args from hypers!
     def _hps_from_args(cls, args):
+        # todo also here we'd better decouple the hyperparameters
         return {
-            # 'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name=args.optimizer, lr=args.lr),
-            'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name='sgd', lr=0.1),
-            # 'n_iters': args.num_inner_iters,
-            'n_iters': 100,
+            'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name=args.eq_optimizer, lr=args.lr),
+            'n_iters': args.num_inner_iters,
             'l2_reg_strength': args.l2_eq
         }
 
@@ -131,9 +135,7 @@ class ParametricGDFitting(Equations, ABC):
         dag_sparsifier.init_parameters(n_dags)
         self.init_parameters(n_dags)
 
-        inner_vars = chain(self.parameters(), dag_sparsifier.parameters())
-        # todo also here we'd better decouple the hyperparameters
-        inner_opt = self.optimizer(inner_vars)
+        inner_opt = self.optimizer(chain(self.parameters(), dag_sparsifier.parameters()))
 
         for inner_iters in range(self.n_iters):
             inner_opt.zero_grad()
@@ -142,13 +144,9 @@ class ParametricGDFitting(Equations, ABC):
             x_hat, dags, equations_reg = self(X, dags)
 
             inner_objective = loss(x_hat, X, dim=(1, 2)) + sparsifier_reg + equations_reg
+
             inner_objective.sum().backward()
-
-            if inner_iters % 10 == 0:
-                pass
-
             inner_opt.step()
-
 
     def regularizer(self):
         """

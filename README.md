@@ -1,20 +1,35 @@
 # discrete DAG learning
 
-NOTE: big refactoring on this branch, it's still WIP but it executes.
+NOTE: big refactoring on this branch, it's still WIP.
+
+Divided the old modules.py into three modules. Removed bernoulli.py (now in sparsifiers.py)
 
 For joint optimization run with default args
 
 ```bash
-python run_model.py
+python run_model.py --joint
 ```
 
 For bilevel just add the --bilevel argument. 
 ```bash
-python run_model.py --bilevel
+python run_model.py
 ```
 
-Haven't tried much stuff yet except for the defaults. 
-And no cleanup done! 
+This will run on the Sachs dataset.
+For small synthetic ER with Gaussian noise use the following
+```bash
+python run_model.py --joint --dataset synthetic
+python run_model.py -dataset synthetic
+```
+
+Bilevel + LARS is working, evaluation pipeline to be finalized
+
+## TODOs
+- Top-K SparseMax
+- HPO pipeline
+- storing results outside wandb
+- metrics with Markov eqiv. classes
+- etc....
 
 ## Installation instructions
 
@@ -36,34 +51,5 @@ pip install -e .            # builds lpsmap and creates a link
 python3 setup.py build_ext --inplace
 ```
 
----
-old stuff
----
-
-## dependencies
-1. Eigen
-
-Download and install without cmake [Eigen](https://gitlab.com/libeigen/eigen/)
-
-2. Cython
-```bash 
-pip install --upgrade cython
-```
-
-3. Lp-Sparsemap
-
-In-place install from source [lpsmap](https://github.com/deep-spin/lp-sparsemap)
-
-### DAG generation
-For data generation, we additionally need `scipy, python-igraph` and `sklearn`. 
-
-wandb
-
-
-## setup
-
-```bash
-python3 setup.py build_ext --inplace
-```
-
+``
 

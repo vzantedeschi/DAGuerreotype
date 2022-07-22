@@ -1,18 +1,11 @@
 import argparse
 from typing import Tuple
-from collections import namedtuple
 
-
-# todo cleanup args
-
-# utils methods for having a nice and fancy argparse. I hope this does not break
-# anything down the line, otherwise we can have also another solution.
-# In this way, choices are printed correctly as strings, but are converted nicely to
-# the right object, so we can define complex "choice-type" options here in this file
-# rather than all around the code base.
 import sparsifiers
 import structures
 import equations
+
+# todo cleanup args
 
 
 def parse_default_data_gen_args(
@@ -183,6 +176,7 @@ def parse_default_model_args(
     )
 
     # -------------------------------------------------- Training ---------------------------------------------
+    # TODO check optimization hypers and how we use them in joint and bilevel
     parser.add_argument(
         "--optimizer",
         default="adam",
@@ -190,7 +184,13 @@ def parse_default_model_args(
         choices=["adam", "adamW", "sgd"],
     )
     parser.add_argument("--lr_theta", type=float, default=1e-1)
-    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument(
+        "--eq_optimizer",
+        default="sgd",
+        type=str,
+        choices=["adam", "adamW", "sgd"],
+    )
+    parser.add_argument("--lr", type=float, default=1e-1)
 
     args, _ = parser.parse_known_args()
 
@@ -202,7 +202,7 @@ def parse_default_model_args(
         choices=["cpu", "cuda"],
     )
     parser.add_argument(
-        "--pruning_reg", type=float, default=0.0001, help="pruning penalty over graph"
+        "--pruning_reg", type=float, default=0.001, help="pruning penalty over graph"
     )
     parser.add_argument(  # use l2_reg instead
         "--l2_theta",

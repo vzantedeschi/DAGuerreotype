@@ -151,12 +151,16 @@ class BernoulliSTEL0Sparsifier(_L0Sparsifier):
 
     def init_parameters(self, num_structures):
         self.op = BernoulliSTEOp((num_structures, self.d, self.d))
-        self.pi = 0.5 * torch.ones((num_structures, self.d, self.d))
+        self.pi = torch.nn.Parameter(
+            0.5 * torch.ones((num_structures, self.d, self.d)),
+            requires_grad=True
+        )
 
     def forward(self, complete_dags):
         self.pi.data.clamp(0.0, 1.0)  # make sure pi is in [0, 1] after updates (so no need of projecting!)
-        # take the MAP when evaluating
-        z = self.op(self.pi)
+
+        z = self.op(self.pi)  # this takes the MAP when eval
+
         # note that in joint optimization, z is still 1 sample! (d x d) matrix,
         # which will then be applied to all the complete dags!
         return complete_dags*z, self.regularizer(complete_dags)
@@ -178,4 +182,4 @@ AVAILABLE = {
     'none': NoSparsifier
 }
 
-DEFAULT = 'none'
+DEFAULT = 'l0_ber_ste'

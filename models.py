@@ -33,7 +33,7 @@ class Daguerro(torch.nn.Module):
         dag_cls = DaguerroJoint if joint else DaguerroBilevel
         # INFO: initialization is deferred to the specific methods to deal with all the modules'
         # hyperparameters inplace
-        structure = structures.AVAILABLE[args.structure].initialize(X, args)  # there's no difference between bilevel and joint opt here
+        structure = structures.AVAILABLE[args.structure].initialize(X, args)
         sparsifier = sparsifiers.AVAILABLE[args.sparsifier].initialize(X, args, joint)
         equation = equations.AVAILABLE[args.equations].initialize(X, args, joint)
         return dag_cls(structure, sparsifier, equation)
@@ -50,12 +50,11 @@ class Daguerro(torch.nn.Module):
     def _learn(self, X, loss, args): raise NotImplementedError()
 
     def _eval(self, X, loss, args):
-        # FIXME put something meaningful here
+        # FIXME put something meaningful here, i.e. fitting the mode, if we want to go that way...
         alphas, complete_dags, structure_reg = self.structure()
         dags, sparsifier_reg = self.sparsifier(complete_dags)
         x_hat, dags, equations_reg = self.equation(X, dags)
         return x_hat, dags
-
 
 
 class DaguerroJoint(Daguerro):
@@ -83,7 +82,6 @@ class DaguerroJoint(Daguerro):
             #  here we weight also the regularizers by the alphas, can discuss about this...
             #  but I think this is correct. The structure regularizer is instead unweighted as it is a global one
             objective = alphas @ (rec_loss + sparsifier_reg + equations_reg) + structure_reg
-
             objective.backward()
 
             optimizer.step()
@@ -122,20 +120,19 @@ class DaguerroBilevel(Daguerro):
             # INFO: main calls, note that here all the regularization terms are computed by the respective modules
             alphas, complete_dags, structure_reg = self.structure()
 
+            # fit the equations and the sparsifier, if any
             self.equation.fit(X, complete_dags, self.sparsifier, loss)
-
-            # eval!
-
 
             # now evaluate the optimized methods
             self.equation.eval()
             self.sparsifier.eval()
 
-            # this now will return the MAP if using L0 STE Bernoulli, not sure what we were doing previously :)
+            # this now will return the MAP (mode) if e.g. using L0 STE Bernoulli,
+            #   todo @vale not sure what we were doing previously :)
             dags, sparsifier_reg = self.sparsifier(complete_dags)
             x_hat, dags, equations_reg = self.equation(X, dags)
 
-            # and now it's done :)
+            # and now it's done :) don't think it's meaningfully to consider the (inner) regularizers here
             final_inner_loss = loss(x_hat, X, dim=(1, 2))
 
             # only final loss should count! to this, we just add the regularization from above
@@ -159,151 +156,18 @@ class DaguerroBilevel(Daguerro):
                 # "expected l0": exp_l0.item(),
             }
 
-            # print(self.structure.theta)
-            if epoch % 100 == 0:
-                print(self.structure.theta)
-                print(self.structure.theta.grad)
-                print(alphas)
-                print(dags[0])
-                print(utils.get_topological_rank(dags[0].detach().numpy()))
-                pass
+            # some printing tbd
+            # if epoch % 100 == 0:
+            #     print(self.structure.theta)
+            #     print(self.structure.theta.grad)
+            #     print(alphas)
+            #     print(dags[0])
+            #     print(utils.get_topological_rank(dags[0].detach().numpy()))
+            #     pass
 
         return log_dict
 
-#
-#
-# #  ---- old implementation -------------
-#
-# class DaguerreoOld(nn.Module):
-#     def __init__(
-#         self, d, X_torch, smap_init_theta:str, estimator_cls=NNL0Estimator, estimator_kwargs=None
-#     ):
-#
-#         super(DaguerreoOld, self).__init__()
-#
-#         if smap_init_theta == "variances":
-#             smap_init = get_variances(X_torch)
-#         else:
-#             smap_init = None
-#
-#         self.smap_masking = SparseMapMasking(d, theta_init=smap_init)
-#
-#         self.estimator_cls = estimator_cls
-#
-#         if estimator_kwargs is None:
-#             self.estimator_kwargs = {}
-#         else:
-#             assert type(estimator_kwargs) is dict
-#             self.estimator_kwargs = estimator_kwargs
-#
-#         self.d = d
-#
-#     def bilevel_optimization(self, x, loss, args):
-#
-#         log_dict = {}
-#
-#         smap_optim = get_optimizer(
-#             self.smap_masking.parameters(), name=args.optimizer, lr=args.lr_theta
-#         )  # to update sparsemap parameters
-#
-#         pbar = tqdm(range(args.num_epochs))
-#
-#         # outer loop
-#         for epoch in pbar:
-#
-#             smap_optim.zero_grad()
-#
-#             alphas, maskings = self.smap_masking(
-#                 args.smap_tmp, args.smap_init, args.smap_iter
-#             )
-#             num_orderings = len(alphas)
-#
-#             # inner problem: learn regressor
-#             self.estimator = self.estimator_cls(
-#                 self.d, num_orderings, **self.estimator_kwargs
-#             )
-#             self.estimator.fit(x, maskings, loss, args)
-#
-#             x_hat = self.estimator(x, maskings)
-#             fidelity_objective = loss(x_hat, x, dim=(-2, -1))
-#
-#             # this is the outer loss (i.e. the loss that depends only on the ranking params)
-#             rec_loss = alphas @ fidelity_objective.detach()
-#             theta_norm = self.smap_masking.l2()
-#
-#             outer_objective = rec_loss + args.l2_reg * theta_norm
-#
-#             outer_objective.backward()
-#
-#             smap_optim.step()
-#
-#             pbar.set_description(
-#                 f"outer objective {outer_objective.item():.2f} | np {num_orderings} | theta norm {theta_norm:.4f}"
-#             )
-#
-#             log_dict = {
-#                 "epoch": epoch,
-#                 "number of orderings": num_orderings,
-#                 "outer objective": outer_objective.item(),
-#                 "expected loss": rec_loss.item(),
-#             }
-#             wandb.log(log_dict)
-#
-#         return log_dict
-#
-#     def joint_optimization(self, x, loss, args):
-#
-#         log_dict = {}
-#
-#         self.estimator = self.estimator_cls(
-#             self.d, 1, **self.estimator_kwargs
-#         )  # init single structure
-#
-#         optimizer = get_optimizer(self.parameters(), name=args.optimizer, lr=args.lr)
-#
-#         pbar = tqdm(range(args.num_epochs))
-#
-#         # outer loop
-#         for epoch in pbar:
-#
-#             optimizer.zero_grad()
-#
-#             alphas, maskings = self.smap_masking(
-#                 args.smap_tmp, args.smap_init, args.smap_iter
-#             )
-#             num_orderings = len(alphas)
-#
-#             x_hat = self.estimator(x, maskings)
-#             self.estimator.project()
-#
-#             exp_loss = alphas @ loss(x_hat, x, dim=(-2, -1))
-#             exp_l0 = alphas @ self.estimator.pruning()
-#             theta_norm = self.smap_masking.l2()
-#
-#             # FIXME I think we should have 2 hyperparameters here, one for the
-#             #  theta L2 norm and one for the equations
-#             l2 = theta_norm + self.estimator.l2().sum()
-#
-#             objective = exp_loss + args.pruning_reg * exp_l0 + args.l2_reg * l2
-#
-#             objective.backward()
-#
-#             optimizer.step()
-#
-#             pbar.set_description(
-#                 f"objective {objective.item():.2f} | np {num_orderings} | theta norm {theta_norm:.4f}"
-#             )
-#
-#             log_dict = {
-#                 "epoch": epoch,
-#                 "number of orderings": num_orderings,
-#                 "objective": objective.item(),
-#                 "expected loss": exp_loss.item(),
-#                 "expected l0": exp_l0.item(),
-#             }
-#             wandb.log(log_dict)
-#
-#         return log_dict
+# ---- old implementation of eval part
 #
 #     def fit_mode(self, x, loss, args):
 #

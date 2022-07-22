@@ -57,7 +57,7 @@ def run(args, wandb_mode):
             wandb.log(log_dict)
         print(log_dict)
 
-        # THIS IS STILL TO BE DONE
+        # todo EVAL part still needs to be done properly
         daguerro.eval()
 
         x_hat, dags = daguerro(X_torch, nll_ev, args)
@@ -72,8 +72,7 @@ def run(args, wandb_mode):
 
         logging.info(log_dict)
 
-
-        # --- todo eval part below is to be done!~
+        # --- old ----
         # model.fit_mode(X_torch, nll_ev, args)
         #
         # # evaluate
