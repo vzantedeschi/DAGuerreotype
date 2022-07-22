@@ -29,6 +29,7 @@ Bilevel + LARS is working, evaluation pipeline to be finalized
 - HPO pipeline
 - storing results outside wandb
 - metrics with Markov eqiv. classes
+- write a script that installs everything needed!!!!
 - etc....
 
 ## Installation instructions
