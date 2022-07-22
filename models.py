@@ -88,8 +88,6 @@ class DaguerroJoint(Daguerro):
                 # "expected loss": exp_loss.item(),
                 # "expected l0": exp_l0.item(),
             }
-            # TODO should be able to exclude wandb if don't want to use it :)
-            wandb.log(log_dict)
 
             print(self.structure.theta)
 
@@ -171,8 +169,6 @@ class DaguerroBilevel(Daguerro):
                 # "expected loss": exp_loss.item(),
                 # "expected l0": exp_l0.item(),
             }
-            # TODO should be able to exclude wandb if don't want to use it :)
-            wandb.log(log_dict)
 
             print(self.structure.theta)
 

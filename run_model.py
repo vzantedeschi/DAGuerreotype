@@ -52,6 +52,9 @@ def run(args, wandb_mode):
         daguerro = Daguerro.initialize(X_torch, args, args.bilevel)
 
         training_log = daguerro(X_torch, nll_ev, args)
+
+        if args.wandb:
+            wandb.log(training_log)
         print(training_log)
 
         # --- todo eval part below is to be done!~
