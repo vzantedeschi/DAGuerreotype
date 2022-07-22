@@ -9,6 +9,7 @@ from typing import Type, Optional
 import equations
 import sparsifiers
 import structures
+import utils
 from equations import Equations
 from structures import Structure
 from sparsifiers import Sparsifier
@@ -48,7 +49,13 @@ class Daguerro(torch.nn.Module):
 
     def _learn(self, X, loss, args): raise NotImplementedError()
 
-    def _eval(self, X, loss, args): raise NotImplementedError()
+    def _eval(self, X, loss, args):
+        # FIXME put something meaningful here
+        alphas, complete_dags, structure_reg = self.structure()
+        dags, sparsifier_reg = self.sparsifier(complete_dags)
+        x_hat, dags, equations_reg = self.equation(X, dags)
+        return x_hat, dags
+
 
 
 class DaguerroJoint(Daguerro):
@@ -97,9 +104,6 @@ class DaguerroJoint(Daguerro):
             # print(self.structure.theta)
 
         return log_dict
-
-    def _eval(self, X, loss, args):
-        pass
 
 
 class DaguerroBilevel(Daguerro):
@@ -156,14 +160,16 @@ class DaguerroBilevel(Daguerro):
             }
 
             # print(self.structure.theta)
-            print(self.structure.theta.grad)
-            print(alphas)
+            if epoch % 100 == 0:
+                print(self.structure.theta)
+                print(self.structure.theta.grad)
+                print(alphas)
+                print(dags[0])
+                print(utils.get_topological_rank(dags[0].detach().numpy()))
+                pass
 
         return log_dict
 
-    def _eval(self, X, loss, args):
-        # todo THIS PROBABLY WILL BE THE SAME as the joint optimization
-        pass
 #
 #
 # #  ---- old implementation -------------

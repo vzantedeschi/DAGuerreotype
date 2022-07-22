@@ -178,4 +178,4 @@ AVAILABLE = {
     'none': NoSparsifier
 }
 
-DEFAULT = 'l0_ber_ste'
+DEFAULT = 'none'

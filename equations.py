@@ -118,8 +118,10 @@ class ParametricGDFitting(Equations, ABC):
     @classmethod   # TODO ideally this should be the other way around... args from hp!
     def _hps_from_args(cls, args):
         return {
-            'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name=args.optimizer, lr=args.lr),
-            'n_iters': args.num_inner_iters,
+            # 'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name=args.optimizer, lr=args.lr),
+            'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name='sgd', lr=0.1),
+            # 'n_iters': args.num_inner_iters,
+            'n_iters': 100,
             'l2_reg_strength': args.l2_eq
         }
 
@@ -142,7 +144,11 @@ class ParametricGDFitting(Equations, ABC):
             inner_objective = loss(x_hat, X, dim=(1, 2)) + sparsifier_reg + equations_reg
             inner_objective.sum().backward()
 
+            if inner_iters % 10 == 0:
+                pass
+
             inner_opt.step()
+
 
     def regularizer(self):
         """

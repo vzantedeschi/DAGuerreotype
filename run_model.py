@@ -51,11 +51,27 @@ def run(args, wandb_mode):
         # estimator_cls = get_estimator_cls(args.estimator)
         daguerro = Daguerro.initialize(X_torch, args, args.joint)
 
-        training_log = daguerro(X_torch, nll_ev, args)
+        log_dict = daguerro(X_torch, nll_ev, args)
 
         if args.wandb:
-            wandb.log(training_log)
-        print(training_log)
+            wandb.log(log_dict)
+        print(log_dict)
+
+        # THIS IS STILL TO BE DONE
+        daguerro.eval()
+
+        x_hat, dags = daguerro(X_torch, nll_ev, args)
+        estimated_B = dags[0].detach().numpy()
+        log_graph(estimated_B, "learned")
+
+        log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
+
+        if args.wandb:
+            wandb.log(log_dict)
+            wandb_run.finish()
+
+        logging.info(log_dict)
+
 
         # --- todo eval part below is to be done!~
         # model.fit_mode(X_torch, nll_ev, args)

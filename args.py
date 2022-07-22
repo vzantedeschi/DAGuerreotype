@@ -75,7 +75,7 @@ def parse_default_data_gen_args(
             "--num_nodes", type=int, default=10, help="num of nodes"
         )
         augmented_parser.add_argument(
-            "--num_samples", type=int, default=200, help="num of samples"
+            "--num_samples", type=int, default=1000, help="num of samples"
         )
 
         augmented_parser.add_argument(
@@ -207,17 +207,17 @@ def parse_default_model_args(
     parser.add_argument(  # use l2_reg instead
         "--l2_theta",
         type=float,
-        default=0.0001,
+        default=0.0,
         help="l2 penalty for the structure vector",
     )
     parser.add_argument(  # use l2_reg instead
         "--l2_eq",
         type=float,
-        default=0.0001,
+        default=0.0,
         help="l2 penalty over all models weights (not graph)",
     )
 
-    parser.add_argument("--num_epochs", type=int, default=1000)
+    parser.add_argument("--num_epochs", type=int, default=500)
     parser.add_argument("--num_inner_iters", type=int, default=100)
 
     argparser.add_argument(
