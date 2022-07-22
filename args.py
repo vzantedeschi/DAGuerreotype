@@ -2,7 +2,6 @@ import argparse
 from typing import Tuple
 from collections import namedtuple
 
-import modules as m
 
 # todo cleanup args
 
@@ -11,25 +10,9 @@ import modules as m
 # In this way, choices are printed correctly as strings, but are converted nicely to
 # the right object, so we can define complex "choice-type" options here in this file
 # rather than all around the code base.
-
-_FPC = namedtuple('_FPC', ['type', 'choices'])
-
-class _CCC(list):  # choice class container
-
-    def __init__(self, cls_dictionary: dict) -> None:
-        super().__init__(cls_dictionary.keys())
-        self.objects = list(cls_dictionary.values())
-
-    def __contains__(self, item):
-        return item in self.objects
-
-
-def fancy_parser_choices(shorthands_values_dict):
-    def type_converter(string):
-        try: return shorthands_values_dict[string]
-        except KeyError: raise ValueError()
-    return _FPC(type_converter, _CCC(shorthands_values_dict))
-
+import sparsifiers
+import structures
+import equations
 
 
 def parse_default_data_gen_args(
@@ -141,6 +124,7 @@ def parse_default_model_args(
         argparser if argparser else argparse.ArgumentParser(description="Daguerreo")
     )
 
+    # TODO delete me??? or not? @ vale
     parser.add_argument(
         "--model",
         type=str,
@@ -161,66 +145,27 @@ def parse_default_model_args(
         help="whether optimizing ordering and graph jointly (alternated) or with bi-level formulation",
     )
 
-    parser.add_argument(
-        "--bilevel",
-        default=False,
-        action="store_true",
-        help="whether optimizing ordering and graph jointly (alternated) or with bi-level formulation",
-    )
+    def _add_from_module(name, module, help_string=''):
+        parser.add_argument(
+            name,
+            type=str,
+            help=help_string,
+            default=module.DEFAULT,
+            choices=list(module.AVAILABLE.keys())
+        )
 
-    parser.add_argument(
-        "--estimator",
-        type=str,
-        default="LARS",
-        choices=[
-            "LARS",
-            "NN",
-        ],
-    )
+    _add_from_module('--structure', structures)
 
-    # we could also put the dictionary in the same file as the class.
-    # not sure what's clearer.
-    # TODO probably merge with other type of structures, like fixed, oracle, or random
-    structures = fancy_parser_choices(
-        {'sp_map': m.SparseMapSVStructure,
-         'tk_sp_max': m.TopKSparseMaxSVStructure}
-    )
-    parser.add_argument(
-        "--structure",
-        type=structures.type,
-        default=m.SparseMapSVStructure,
-        choices=structures.choices
-    )
+    _add_from_module('--sparsifier', sparsifiers)
 
-    sparsifiers = fancy_parser_choices(
-        {'l0_ber_ste': m.BernoulliSTEL0Sparsifier,
-         'l0_hc': m.HardConcreteL0Sparsifier,
-         'none': m.NoSparsifier}
-    )
-    parser.add_argument(
-        "--sparsifier",
-        type=sparsifiers.type,
-        default=m.BernoulliSTEL0Sparsifier,
-        choices=sparsifiers.choices
-    )
+    _add_from_module('--equations', equations)
 
-    equations = fancy_parser_choices(
-        {'lars': m.LARSAlgorithm,
-         'linear': m.LinearEquations}
-    )
-    parser.add_argument(
-        "--equations",
-        type=equations.type,
-        default=m.LinearEquations,
-        choices=equations.choices
-    )
-
-
+    # TODO: add random ordering (what's this? @vale)
     parser.add_argument(
         "--fixed_perm",
         type=str,
         default="variances",
-        choices=["optimal", "variances"],  # TODO: add random ordering
+        choices=["optimal", "variances"],
     )
 
     # -------------------------------------------------- MLP --------------------------------------------------
@@ -229,11 +174,12 @@ def parse_default_model_args(
         "--hidden", type=int, default=10, help="Dimensions of hidden layers"
     )
 
+    # TODO @vale what's this? delete?
     parser.add_argument(
         "--nonlinear",
         default=False,
         action="store_true",
-        help="whether use nonlinear graph",  # TODO what is this?
+        help="whether use nonlinear graph",
     )
 
     # -------------------------------------------------- Training ---------------------------------------------
@@ -256,18 +202,18 @@ def parse_default_model_args(
         choices=["cpu", "cuda"],
     )
     parser.add_argument(
-        "--pruning_reg", type=float, default=0.01, help="pruning penalty over graph"
+        "--pruning_reg", type=float, default=0.0001, help="pruning penalty over graph"
     )
     parser.add_argument(  # use l2_reg instead
         "--l2_theta",
         type=float,
-        default=0.01,
+        default=0.0001,
         help="l2 penalty for the structure vector",
     )
     parser.add_argument(  # use l2_reg instead
         "--l2_eq",
         type=float,
-        default=0.001,
+        default=0.0001,
         help="l2 penalty over all models weights (not graph)",
     )
 

@@ -5,8 +5,13 @@ from tqdm import tqdm
 
 from typing import Type, Optional
 
-from modules import NNL0Estimator, SparseMapMasking, Structure, Sparsifier, \
-    Equations
+# from modules import Structure, Sparsifier, Equations
+import equations
+import sparsifiers
+import structures
+from equations import Equations
+from structures import Structure
+from sparsifiers import Sparsifier
 from utils import get_optimizer, get_variances
 from itertools import chain
 
@@ -16,21 +21,21 @@ class Daguerro(torch.nn.Module):
 
     def __init__(self, structure: Structure,
                  sparsifier: Sparsifier,
-                 equations: Equations) -> None:
+                 equation: Equations) -> None:
         super(Daguerro, self).__init__()
         self.structure = structure
         self.sparsifier = sparsifier
-        self.equations = equations
+        self.equation = equation
 
     @staticmethod
-    def initialize(X, args, bilevel=False):
-        dag_cls = DaguerroBilevel if bilevel else DaguerroJoint
+    def initialize(X, args, joint=False):
+        dag_cls = DaguerroJoint if joint else DaguerroBilevel
         # INFO: initialization is deferred to the specific methods to deal with all the modules'
         # hyperparameters inplace
-        structure = args.structure.initialize(X, args)  # there's no difference between bilevel and joint opt here
-        sparsifier = args.sparsifier.initialize(X, args, bilevel)
-        equations = args.equations.initialize(X, args, bilevel)
-        return dag_cls(structure, sparsifier, equations)
+        structure = structures.AVAILABLE[args.structure].initialize(X, args)  # there's no difference between bilevel and joint opt here
+        sparsifier = sparsifiers.AVAILABLE[args.sparsifier].initialize(X, args, joint)
+        equation = equations.AVAILABLE[args.equations].initialize(X, args, joint)
+        return dag_cls(structure, sparsifier, equation)
 
     def forward(self, X, loss, args):
         # TODO remove args from here and push everything to the initialize method,
@@ -64,7 +69,7 @@ class DaguerroJoint(Daguerro):
             # INFO: main calls, note that here all the regularization terms are computed by the respective modules
             alphas, complete_dags, structure_reg = self.structure()
             dags, sparsifier_reg = self.sparsifier(complete_dags)
-            x_hat, dags, equations_reg = self.equations(X, dags)
+            x_hat, dags, equations_reg = self.equation(X, dags)
 
             rec_loss = loss(x_hat, X, dim=(-2, -1))
 
@@ -89,7 +94,7 @@ class DaguerroJoint(Daguerro):
                 # "expected l0": exp_l0.item(),
             }
 
-            print(self.structure.theta)
+            # print(self.structure.theta)
 
         return log_dict
 
@@ -102,7 +107,7 @@ class DaguerroBilevel(Daguerro):
     def _learn(self, X, loss, args):
         log_dict = {}
 
-        optimizer = get_optimizer(self.structure.parameters(), name=args.optimizer, lr=args.lr)
+        optimizer = get_optimizer(self.structure.parameters(), name=args.optimizer, lr=args.lr_theta)
 
         pbar = tqdm(range(args.num_epochs))
 
@@ -113,38 +118,18 @@ class DaguerroBilevel(Daguerro):
             # INFO: main calls, note that here all the regularization terms are computed by the respective modules
             alphas, complete_dags, structure_reg = self.structure()
 
-            # initialization for the bilevel part
-            sparsifier = self.sparsifier.bl_initialize(complete_dags)
-            equations = self.equations.bl_initialize(complete_dags)
+            self.equation.fit(X, complete_dags, self.sparsifier, loss)
 
-            # todo here there's a soso branching, but not ideas how to get it better.
-            #  also, can't think of any potential case where the inner part is a full algo but we still might want
-            #  a sparsifier.... so for the time being I'm just ignoring the sparsifier
-            if self.equations.is_complete_algorithm():
-                x_hat, dags, reg = equations(X, complete_dags)
-                # TODO maybe call eval here as well also for the complete algorithms
-            else:  # GD to optimize the parameters of the equation models and potentially of the sparsifier
-                inner_vars = chain(equations.parameters(), sparsifier.parameters())
-                # todo also here we'd better decouple the hyperparameters
-                inner_opt = get_optimizer(inner_vars, name=args.optimizer, lr=args.lr)
-                for inner_iters in range(args.num_inner_iters):
-                    inner_opt.zero_grad()
+            # eval!
 
-                    dags, sparsifier_reg = sparsifier(complete_dags)
-                    x_hat, dags, equations_reg = equations(X, dags)
 
-                    inner_objective = loss(x_hat, X, dim=(1, 2)) + sparsifier_reg + equations_reg
-                    inner_objective.sum().backward()
+            # now evaluate the optimized methods
+            self.equation.eval()
+            self.sparsifier.eval()
 
-                    inner_opt.step()
-
-                # now evaluate the optimized methods
-                equations.eval()
-                sparsifier.eval()
-
-                # this now will return the MAP if using L0 STE Bernoulli, not sure what we were doing previously :)
-                dags, sparsifier_reg = sparsifier(complete_dags)
-                x_hat, dags, equations_reg = equations(X, dags)
+            # this now will return the MAP if using L0 STE Bernoulli, not sure what we were doing previously :)
+            dags, sparsifier_reg = self.sparsifier(complete_dags)
+            x_hat, dags, equations_reg = self.equation(X, dags)
 
             # and now it's done :)
             final_inner_loss = loss(x_hat, X, dim=(1, 2))
@@ -165,12 +150,14 @@ class DaguerroBilevel(Daguerro):
             log_dict = {
                 "epoch": epoch,
                 # "number of orderings": num_orderings,
-                "objective": objective.item(),
+                "objective": final_inner_loss[0].item(),
                 # "expected loss": exp_loss.item(),
                 # "expected l0": exp_l0.item(),
             }
 
-            print(self.structure.theta)
+            # print(self.structure.theta)
+            print(self.structure.theta.grad)
+            print(alphas)
 
         return log_dict
 

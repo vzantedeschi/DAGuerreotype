@@ -44,12 +44,12 @@ def run(args, wandb_mode):
         log_graph(dag_W_torch.detach().numpy(), "True")
 
         logging.info(
-            f" Data seed: {seed}, run model {args.model} with {args.estimator} and SMAP's initial theta = {args.smap_init_theta}"
+            f" Data seed: {seed}, run model {args.model} with {args.equations} and SMAP's initial theta = {args.smap_init_theta}"
         )
         # log_true_graph(dag_G=dag_W_torch.numpy(), args=args)
 
         # estimator_cls = get_estimator_cls(args.estimator)
-        daguerro = Daguerro.initialize(X_torch, args, args.bilevel)
+        daguerro = Daguerro.initialize(X_torch, args, args.joint)
 
         training_log = daguerro(X_torch, nll_ev, args)
 
