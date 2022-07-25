@@ -1,3 +1,4 @@
+import os
 import math
 
 import numpy as np
@@ -5,6 +6,9 @@ import torch
 from sklearn.preprocessing import StandardScaler
 
 from .dag_simulation import sample_data, simulate_dag
+
+
+_DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def get_synthetic_dataset(args, *a):
@@ -24,8 +28,8 @@ def get_synthetic_dataset(args, *a):
 
 def get_sachs_dataset(args_ns, *a):
 
-    data = np.load("./data/sachs/continuous/data1.npy")
-    dag_B = np.load("./data/sachs/continuous/DAG1.npy")
+    data = np.load(os.path.join(_DATA_DIR, "sachs", "continuous", "data1.npy"))
+    dag_B = np.load(os.path.join(_DATA_DIR, "sachs", "continuous", "DAG1.npy"))
 
     return dag_B, dag_B, data
 
@@ -33,8 +37,8 @@ def get_sachs_dataset(args_ns, *a):
 def get_syntren_dataset(args_ns, seed=1):
 
     seed = np.clip(seed, 1, 10)
-    data = np.load(f"./data/syntren/data{seed}.npy")
-    dag_B = np.load(f"./data/syntren/DAG{seed}.npy")
+    data = np.load(os.path.join(_DATA_DIR, "syntren", f"data{seed}.npy"))
+    dag_B = np.load(os.path.join(_DATA_DIR, "syntren", f"DAG{seed}.npy"))
 
     return dag_B, dag_B, data
 
