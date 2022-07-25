@@ -6,3 +6,4 @@ build/*
 *.pyx
 **/__pycache__/*
 *.cpp
+.eggs
