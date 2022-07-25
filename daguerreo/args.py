@@ -1,9 +1,9 @@
 import argparse
 from typing import Tuple
 
-import sparsifiers
-import structures
-import equations
+from . import sparsifiers
+from . import structures
+from . import equations
 
 # todo cleanup args
 

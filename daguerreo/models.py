@@ -1,20 +1,20 @@
+from itertools import chain
+from typing import Type, Optional
+
 import torch
 import wandb
 from torch import nn
 from tqdm import tqdm
 
-from typing import Type, Optional
-
 # from modules import Structure, Sparsifier, Equations
-import equations
-import sparsifiers
-import structures
-import utils
-from equations import Equations
-from structures import Structure
-from sparsifiers import Sparsifier
-from utils import get_optimizer, get_variances
-from itertools import chain
+from . import equations
+from . import sparsifiers
+from . import structures
+from . import utils
+from .equations import Equations
+from .structures import Structure
+from .sparsifiers import Sparsifier
+from .utils import get_optimizer, get_variances
 
 
 # TODO do we need this to subclass nn.Module?

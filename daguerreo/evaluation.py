@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import get_topological_rank
+from .utils import get_topological_rank
 
 # -------------------------------------------------------------------------- METRICS
 

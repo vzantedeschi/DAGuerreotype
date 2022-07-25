@@ -3,14 +3,15 @@ import warnings
 from abc import ABC
 from itertools import chain
 
-import torch.nn
-from sklearn.exceptions import ConvergenceWarning
-from sklearn.linear_model import LinearRegression, LassoLarsIC
 import numpy as np
+import torch.nn
 from torch import nn
 
-import utils
-from sparsifiers import Sparsifier
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.linear_model import LinearRegression, LassoLarsIC
+
+from . import utils
+from .sparsifiers import Sparsifier
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)

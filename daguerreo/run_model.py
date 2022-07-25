@@ -3,12 +3,12 @@ import logging
 import torch
 import wandb
 
-from args import parse_pipeline_args
-from data.datasets import get_dataset
-from evaluation import evaluate_binary
-from models import Daguerro
-from utils import (get_group_name, get_wandb_mode, init_project_path,
-                   init_seeds, log_graph, nll_ev)
+from .args import parse_pipeline_args
+from .data.datasets import get_dataset
+from .evaluation import evaluate_binary
+from .models import Daguerro
+from .utils import (get_group_name, get_wandb_mode, init_project_path,
+                    init_seeds, log_graph, nll_ev)
 
 
 def run(args, wandb_mode):

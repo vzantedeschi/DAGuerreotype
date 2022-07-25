@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from sklearn.preprocessing import StandardScaler
 
-from data.dag_simulation import sample_data, simulate_dag
+from .dag_simulation import sample_data, simulate_dag
 
 
 def get_synthetic_dataset(args, *a):

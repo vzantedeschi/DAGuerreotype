@@ -1,8 +1,9 @@
 import numpy as np
 import torch
+
 from lpsmap.ad3qp.factor_graph import PFactorGraph
 
-from ranksp._permutahedron import Permutahedron
+from ._sparsemap import Permutahedron
 
 
 class _BaseSparseMAP(torch.autograd.Function):
@@ -15,7 +16,6 @@ class _BaseSparseMAP(torch.autograd.Function):
         ctx.f = cls.make_factor(ctx)
         ctx.fg.declare_factor(ctx.f, ctx.variables)
         x_np = x.detach().cpu().numpy().astype(np.double)
-
         # if true, random-initialize the algorithm
         if ctx.init:
             init = torch.rand(x_np.shape[0], dtype=torch.double)
@@ -66,5 +66,5 @@ class RankSparseMAP(_BaseSparseMAP):
         # return cls.jv(ctx, dp), None, None, None
 
 
-def sparse_rank(x, max_iter=100, init=True):
+def sparsemap_rank(x, max_iter=100, init=True):
     return RankSparseMAP.apply(x, max_iter, init)

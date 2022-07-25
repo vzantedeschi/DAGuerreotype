@@ -2,8 +2,8 @@ from abc import ABC
 
 import torch
 
-from ranksp.ranksp import sparse_rank
-from utils import get_variances
+from .permutahedron import sparsemap_rank
+from .utils import get_variances
 
 
 class Structure(torch.nn.Module):
@@ -75,7 +75,7 @@ class SparseMapSVStructure(_ScoreVectorStructure):
     def forward(self):
         # call the sparseMAP rank procedure, it returns a vector of probabilities and one of sorted indices,
         # FIXME re-check if indieces are in ascending or descending order!!!!!!
-        alphas, orderings = sparse_rank(
+        alphas, orderings = sparsemap_rank(
             self.theta / self.smap_tmp,  # the actual parameter, this is a good place to do perturb & map insted
             init=self.smap_init, max_iter=self.smap_iter)
         # TODO possibly add eval branch that returns the MAP here, although - not so sure why we should take the MAP,
