@@ -17,13 +17,39 @@ def dot_perm(x, pi):
     pi: torch Tensor[long], shape [k, d]
     """
 
-    # rho = torch.arange(x.shape[0]).to(dtype=x.dtype, device=x.device) + 1
-    # return x[pi] @ rho
     pi_ = pi.to(dtype=x.dtype) + 1
     return pi_ @ x
 
 
 def sparsemax_rank(x, max_k=100, prune_output=True):
+    """top-k sparsemax on the ranking problem (permutahedron).
+
+    Parameters
+    ----------
+
+    x: torch.Tensor shape [d]
+        The vector of scores to be ranked.
+
+    max_k: int, default: 100
+        The maximum value of top-ranked permutations to compute.
+
+    prune_output: bool, default: True
+        Whether to prune the permutations with zero probabilities.
+        If False, the output always has shape ([max_k], [max_k, d]).
+        If True, the output can have fewer rows.
+
+
+    Returns
+    -------
+
+    probas: torch.Tensor,
+        sparsemax probabilities, differentiable wrt the score vector.
+
+    rankings: torch.Tensor
+        discrete rankings of the input vector, ordered by how close
+        they are to sorting the vector ascendingly.
+        rankings[0] is always the inverse permutation of argsort(x).
+    """
     ranker = KBestRankings(x.to(device='cpu', dtype=torch.double), max_k)
     rankings, _ = ranker.compute(max_k)
 
@@ -36,17 +62,3 @@ def sparsemax_rank(x, max_k=100, prune_output=True):
         return probas[mask], rankings[mask]
     else:
         return probas, rankings
-
-
-def main():
-    x = torch.randn(5).double()
-    print("sparsemax")
-    print(sparsemax_rank(x, max_k=4))
-
-    print("sparsemap")
-    print(sparsemap_rank(x, max_iter=100, init=False))
-
-
-if __name__ == '__main__':
-    main()
-
