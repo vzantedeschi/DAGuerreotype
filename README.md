@@ -7,19 +7,19 @@ Divided the old modules.py into three modules. Removed bernoulli.py (now in spar
 For joint optimization run with default args
 
 ```bash
-python run_model.py --joint
+python -m daguerro.run_model --joint
 ```
 
 For bilevel just add the --bilevel argument. 
 ```bash
-python run_model.py
+python -m daguerro.run_model
 ```
 
 This will run on the Sachs dataset.
 For small synthetic ER with Gaussian noise use the following
 ```bash
-python run_model.py --joint --dataset synthetic
-python run_model.py -dataset synthetic
+python -m daguerro.run_model --joint --dataset synthetic
+python -m daguerro.run_model --dataset synthetic
 ```
 
 Bilevel + LARS is working, evaluation pipeline to be finalized
