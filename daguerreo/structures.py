@@ -2,7 +2,7 @@ from abc import ABC
 
 import torch
 
-from .permutahedron import sparsemap_rank
+from .permutahedron import sparsemap_rank, sparsemax_rank
 from .utils import get_variances
 
 
@@ -58,7 +58,8 @@ class SparseMapSVStructure(_ScoreVectorStructure):
     Class for learning the score vector with the sparseMAP operator.
     """
 
-    def __init__(self, d, theta_init, l2_reg_strength, smap_tmp, smap_init, smap_iter) -> None:
+    def __init__(self, d, theta_init, l2_reg_strength, smap_tmp, smap_init,
+                 smap_iter) -> None:
         super().__init__(d, theta_init, l2_reg_strength)
         self.smap_tmp = smap_tmp
         self.smap_init = smap_init
@@ -73,19 +74,44 @@ class SparseMapSVStructure(_ScoreVectorStructure):
         }
 
     def forward(self):
-        # call the sparseMAP rank procedure, it returns a vector of probabilities and one of sorted indices,
-        # FIXME re-check if indieces are in ascending or descending order!!!!!!
+        # call the sparseMAP rank procedure.
+        # it returns a vector of probas and a matrix of integer permutations.
+        # orderings[0] is the inverse permutation of argsort(self.theta)
+        # (see tests)
         alphas, orderings = sparsemap_rank(
-            self.theta / self.smap_tmp,  # the actual parameter, this is a good place to do perturb & map insted
+            # the actual parameter,
+            # this is a good place to do perturb & map insted
+            self.theta / self.smap_tmp,
             init=self.smap_init, max_iter=self.smap_iter)
-        # TODO possibly add eval branch that returns the MAP here, although - not so sure why we should take the MAP,
-        #  can't we keep the probability distribution also at eval time?
-        return alphas, self.M[orderings[..., None], orderings[:, None]], self.regularizer()
+
+        # TODO possibly add eval branch that returns the MAP here,
+        # although - not so sure why we should take the MAP,
+        # can't we keep the probability distribution also at eval time?
+        return (alphas,
+                self.M[orderings[..., None], orderings[:, None]],
+                self.regularizer())
 
 
 class TopKSparseMaxSVStructure(_ScoreVectorStructure):
-    # TODO
-    pass
+    def __init__(self, d, theta_init, l2_reg_strength, smax_tmp,
+                 smax_max_k) -> None:
+        super().__init__(d, theta_init, l2_reg_strength)
+        self.smax_tmp = smax_tmp
+        self.smax_max_k = smax_max_k
+
+    @classmethod
+    def _hps_from_args(cls, args):
+        return {
+            'smax_tmp': args.smax_tmp,
+            'smax_max_k': args.smax_max_k,
+        }
+
+    def forward(self):
+        alphas, orderings = sparsemax_rank(self.theta / self.smax_tmp,
+                                           max_k=self.smax_max_k)
+        return (alphas,
+                self.M[orderings[..., None], orderings[:, None]],
+                self.regularizer())
 
 
 AVAILABLE = {
