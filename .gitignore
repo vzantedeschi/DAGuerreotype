@@ -2,8 +2,6 @@
 
 build/*
 *.so
-*.pxd
-*.pyx
 **/__pycache__/*
 *.cpp
 .eggs
