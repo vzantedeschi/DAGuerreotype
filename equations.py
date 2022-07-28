@@ -1,3 +1,4 @@
+import math
 import warnings
 from abc import ABC
 from itertools import chain
@@ -160,6 +161,18 @@ class ParametricGDFitting(Equations, ABC):
                 # todo probably better mean than sum here
             ]).sum(0)
 
+    def forward(self, X, dags):
+        mx = masked_x(X, dags)
+        out = self._forward_impl(mx)
+        return out, dags, self.regularizer()
+
+    def _forward_impl(self, masked_X):
+        raise NotImplementedError()
+
+
+def _initialize_param(*shape, initializer=torch.zeros):
+    return nn.Parameter(initializer(shape), requires_grad=True)
+
 
 class LinearEquations(ParametricGDFitting):
 
@@ -168,158 +181,54 @@ class LinearEquations(ParametricGDFitting):
         super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters)
 
     def init_parameters(self, num_structures):
-        self.W = nn.Parameter(
-            torch.zeros(num_structures, self.d, self.d), requires_grad=True
-        )  # W[:, p, c] one weight from parent p to child c
+        # W[:, p, c] one weight from parent p to child c
         # W[0]'s column c reconstructs node c
         # TODO why no bias?
+        self.W = _initialize_param(num_structures, self.d, self.d)
 
-    def forward(self, X, dags):
+    def _forward_impl(self, masked_X):
         # reconstruct the child from the parents, one per dag!
-        x1 = torch.einsum("oncp,opc->onc", masked_x(X, dags), self.W)
-        return x1, dags, self.regularizer()
+        return torch.einsum("oncp,opc->onc", masked_X, self.W)
 
 
 class NonlinearEquations(ParametricGDFitting):
+    """
+    Implementation of a one-hidden-layer feed-forward neural net that preserves a given dag structure.
+    """
 
     def __init__(self, d, num_structures, l2_reg_strength, optimizer, n_iters,
-                 hidden_layers=2, activation=torch.nn.functional.leaky_relu) -> None:
+                 hidden_units, activation=torch.nn.functional.leaky_relu) -> None:
+        self.hidden_units = hidden_units
+        self.activation = activation
+        self.W1 = None
+        self.b1 = None
+        self.W2 = None
+        # todo why no b2?
         super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters)
 
     @classmethod
     def _hps_from_args(cls, args):
         return super()._hps_from_args(args) | {
-
+            'hidden_units': args.hidden,
+            # TODO activation seems missing in args :)
         }
 
     def init_parameters(self, num_structures):
-        pass
+        self.W1 = _initialize_param(num_structures, self.d, self.d, self.hidden_units)
+        torch.nn.init.kaiming_uniform_(self.W1, a=math.sqrt(5))  # taken from torch.nn.Linear
 
-    def forward(self, X, dags):
-        pass
+        self.b1 = _initialize_param(num_structures, 1, self.d, self.hidden_units)
+        self.W2 = _initialize_param(num_structures, self.d, self.hidden_units)
 
-    # todo
+    def _forward_impl(self, masked_X):
+        # computes hidden layer, one per dag, per example, child node, hidden unit (4-d tensor)
+        out = torch.einsum("oncp,opch->onch", masked_X, self.W1)
+        out = self.activation(out + self.b1)
 
-
-# ---- previous stuff // commented out because i still need to implement this  -----
-
-
-class NonLinearEquationsOld(EquationsOld):
-    def __init__(
-        self, d, num_equations=1, hidden=2, activation=torch.nn.functional.leaky_relu
-    ):
-
-        super(NonLinearEquationsOld, self).__init__(d)
-
-        self.num_equations = num_equations
-        self.hidden = hidden
-
-        self.W = nn.Parameter(
-            torch.randn(num_equations, d, d, hidden)
-            * 0.05,  # TODO: check for better value of std
-            requires_grad=True,
-        )
-
-        self.bias = nn.Parameter(
-            torch.zeros(num_equations, 1, d, hidden), requires_grad=True
-        )
-
-        self.activation = activation
-
-        self.final_map = nn.Parameter(
-            torch.randn(num_equations, d, hidden) * 0.05, requires_grad=True
-        )
-
-    def forward(self, masked_x):
-
-        out = torch.einsum("oncp,opch->onch", masked_x, self.W)  #
-
-        out = self.activation(out + self.bias)
-
-        return torch.einsum("onch,och->onc", out, self.final_map)
-
-    def l2(self):
-
-        out = torch.sum(self.W**2, dim=(-3, -2, -1))  # one l2 per set of equations
-        out += torch.sum(self.bias**2, dim=(-3, -2, -1))
-        out += torch.sum(self.final_map**2, dim=(-2, -1))
-
+        # computes output (summing over the hidden dimension)
+        out = torch.einsum("onch,och->onc", out, self.W2)
         return out
 
-
-
-class NNL0Estimator(Estimator, nn.Module):
-    def __init__(
-        self,
-        d,
-        num_structures,
-        bernouilli_init=0.5,
-        linear=True,
-        hidden=1,
-        activation=torch.nn.functional.leaky_relu,
-    ):
-
-        nn.Module.__init__(self)
-        # TODO: rename to sparsity
-        self.structure = BernoulliStructure(
-            d, num_structures, initial_value=bernouilli_init
-        )
-
-        if linear:
-            self.equations = LinearEquationsOld(d, num_structures)
-        else:
-            self.equations = NonLinearEquationsOld(
-                d, num_structures, hidden=hidden, activation=activation
-            )
-
-    def forward(self, x, maskings):
-
-        dags = self.structure(maskings)
-
-        masked_x = torch.einsum(
-            "opc,np->oncp", dags, x
-        )  # for each ordering (o), data point (i) and node (c): vector v, with v_p = x_ip if p is potentially a parent of c, 0 otherwise
-
-        x_hat = self.equations(masked_x)
-
-        return x_hat
-
-    def fit(self, x, maskings, loss, args):
-
-        self.train()
-
-        optimizer = get_optimizer(
-            self.parameters(), name=args.optimizer, lr=args.lr
-        )  # to update structure and equations
-
-        # inner loop
-        for inner_iters in range(args.num_inner_iters):
-
-            x_hat = self(x, maskings)  # (num_structures, n, d)
-
-            objective = loss(x_hat, x, dim=(-2, -1))
-            objective += args.pruning_reg * self.pruning() + args.l2_reg * self.l2()
-
-            objective.sum().backward()
-
-            optimizer.step()
-            optimizer.zero_grad()
-
-            self.project()
-
-        self.eval()
-
-    def project(self):
-        self.structure.B.project()
-
-    def pruning(self):
-        return self.structure.l0()
-
-    def l2(self):
-        return self.equations.l2()
-
-    def get_structure(self, masking):
-        return self.structure(masking)
 
 AVAILABLE = {
     'lars': LARSAlgorithm,
