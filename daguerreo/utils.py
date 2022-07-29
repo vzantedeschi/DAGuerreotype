@@ -132,3 +132,15 @@ def log_graph(dag_G: np.ndarray, name: str) -> None:
     wandb.log({f"{name}_graph": dag_G})
 
     return a_dag
+
+
+def markov_eqiv_class(dag: np.ndarray):
+    """
+
+    Args:
+        dag: 1 matrix representing the dag
+
+    Returns: a list of matrices representing all the dags in the Markov equivalence class
+    """
+    # TODO @matt
+    raise NotImplementedError()

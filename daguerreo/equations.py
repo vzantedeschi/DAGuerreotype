@@ -86,6 +86,44 @@ class LARSAlgorithm(Equations):
         return cls(X.shape[1])
 
 
+class LARSDebiasedAlgorithm(LARSAlgorithm):
+
+
+    def fit(self, X, dags, dag_sparsifier=None, loss=None):
+        super(LARSAlgorithm, self).fit(X, dags, dag_sparsifier, loss)
+
+        LR = LinearRegression(normalize=False, n_jobs=1)
+        LL = LassoLarsIC(criterion="bic", normalize=False)
+
+        x_numpy = X.detach().numpy()
+        masks_numpy = dags.long().detach().numpy()
+
+        self.W = np.zeros((len(masks_numpy), self.d, self.d))
+
+        for m, mask in enumerate(masks_numpy):
+            for target in range(self.d):
+
+                covariates = np.nonzero(mask[:, target])[0]
+
+                if len(covariates) > 0:  # if target is not a root node
+
+                    LL.fit(x_numpy[:, covariates], x_numpy[:, target].ravel())
+                    ll_masked = LL.coef_ != 0
+                    raise NotImplementedError()
+                    # todo finish this!
+
+                    X_masked2 = x_numpy[:, covariates][:, mask]
+                    LR.fit(x_numpy[:, covariates][:, mask], x_numpy[:, target].ravel())
+                    weight = np.abs(LR.coef_)
+
+                    LL.fit(x_numpy[:, covariates] * weight, x_numpy[:, target].ravel())
+                    self.W[m, covariates, target] = LL.coef_ * weight
+
+            assert (self.W[m, mask == 0] == 0).all(), (self.W[m], mask)  # FIXME why this?
+
+        self.W = torch.from_numpy(self.W)
+
+
 def masked_x(X, dags):
     """
     Args:
@@ -233,6 +271,7 @@ class NonlinearEquations(ParametricGDFitting):
 
 AVAILABLE = {
     'lars': LARSAlgorithm,
+    'larsdb': LARSDebiasedAlgorithm,
     'linear': LinearEquations,
     'nonlinear': NonlinearEquations,
 }

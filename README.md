@@ -30,17 +30,33 @@ python -m daguerreo.run_model --structure tk_sp_max --dataset synthetic
 
 Bilevel + LARS is working, evaluation pipeline to be finalized
 
-## TODOs coding
+# TODO 
+
+### Theory
+
+- formalize the "continuity" argument of the MAP @luca
+- rewrite the "structure" subsection of the paper following Vlad's notes  @vlad
+- etc.
+
+### Code
 - ~~Top-K SparseMax~~
-- HPO pipeline
-- storing results outside wandb
-- metrics with Markov eqiv. classes
+- remove temperature in spmax and max  @luca
+- HPO pipeline @vale
+  - tune on synthetic datasets (maybe from a distribution over synth datasets)
+- storing results outside wandb  @luca
+- metrics with Markov eqiv. classes !!!!!! @matt
+- debiased LARS @vale
+- SID without R 
 - write a script that installs everything needed!!!!
-- check the bias issue! (no bias in linear & non-linear models)!!
+- check the bias issue! (no bias in linear & non-linear models) [low priority]
 - etc....
 
-## TODOs experiments
+### Experiments
 
+- synthetic
+  - compare distributions of sparsemap/max over graphs vs the "true" distribution that is a sparse distribution 
+     with mass only on graphs in the same Markov class as the ground truth graph
+- real world data
 - sparsemax 
 - bilvel vs joint (fair comparrison with same:(i) runtime! (ii) number of "seen" DAGS)
 
