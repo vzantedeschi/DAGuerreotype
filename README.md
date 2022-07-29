@@ -22,6 +22,12 @@ python -m daguerreo.run_model --joint --dataset synthetic
 python -m daguerreo.run_model --dataset synthetic
 ```
 
+Run with Sparsemax 
+```bash
+python -m daguerreo.run_model --structure tk_sp_max --joint --dataset synthetic
+python -m daguerreo.run_model --structure tk_sp_max --dataset synthetic
+```
+
 Bilevel + LARS is working, evaluation pipeline to be finalized
 
 ## TODOs coding

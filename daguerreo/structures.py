@@ -107,7 +107,8 @@ class TopKSparseMaxSVStructure(_ScoreVectorStructure):
         }
 
     def forward(self):
-        alphas, orderings = sparsemax_rank(self.theta / self.smax_tmp,
+        # TODO @vlad here need to give a vector as input but sparsemap seem to require d x 1 matrix, right? make same?
+        alphas, orderings = sparsemax_rank(self.theta.view(-1) / self.smax_tmp,
                                            max_k=self.smax_max_k)
         return (alphas,
                 self.M[orderings[..., None], orderings[:, None]],

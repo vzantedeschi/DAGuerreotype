@@ -251,6 +251,10 @@ def parse_default_model_args(
         help="SparseMap: number of iterations of QP solver",
     )
 
+    # SPARSE MAX ARGS
+    parser.add_argument('--smax_tmp', type=float, default=1.)
+    parser.add_argument('--smax_max_k', type=int, default=10)
+
     args, _ = parser.parse_known_args()
     return args, parser
 
