@@ -58,8 +58,8 @@ class SparseMapSVStructure(_ScoreVectorStructure):
     Class for learning the score vector with the sparseMAP operator.
     """
 
-    def __init__(self, d, theta_init, l2_reg_strength, smap_tmp, smap_init,
-                 smap_iter) -> None:
+    def __init__(self, d, theta_init, l2_reg_strength, smap_init,
+                 smap_iter, smap_tmp=1.) -> None:
         super().__init__(d, theta_init, l2_reg_strength)
         self.smap_tmp = smap_tmp
         self.smap_init = smap_init
@@ -68,7 +68,6 @@ class SparseMapSVStructure(_ScoreVectorStructure):
     @classmethod
     def _hps_from_args(cls, args):
         return {
-            'smap_tmp': args.smap_tmp,
             'smap_init': args.smap_init,
             'smap_iter': args.smap_iter,
         }
@@ -93,8 +92,8 @@ class SparseMapSVStructure(_ScoreVectorStructure):
 
 
 class TopKSparseMaxSVStructure(_ScoreVectorStructure):
-    def __init__(self, d, theta_init, l2_reg_strength, smax_tmp,
-                 smax_max_k) -> None:
+    def __init__(self, d, theta_init, l2_reg_strength,
+                 smax_max_k, smax_tmp=1.) -> None:
         super().__init__(d, theta_init, l2_reg_strength)
         self.smax_tmp = smax_tmp
         self.smax_max_k = smax_max_k
@@ -116,7 +115,6 @@ class TopKSparseMaxSVStructure(_ScoreVectorStructure):
 
 
 AVAILABLE = {
-    'sp_map': SparseMapSVStructure,
     'tk_sp_max': TopKSparseMaxSVStructure
     # TODO add oracle fixed, etc, etc..
 }

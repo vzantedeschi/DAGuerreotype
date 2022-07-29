@@ -40,7 +40,7 @@ Bilevel + LARS is working, evaluation pipeline to be finalized
 
 ### Code
 - ~~Top-K SparseMax~~
-- remove temperature in spmax and max  @luca
+- ~~remove temperature in spmax and max  @luca~~
 - HPO pipeline @vale
   - tune on synthetic datasets (maybe from a distribution over synth datasets)
 - storing results outside wandb  @luca

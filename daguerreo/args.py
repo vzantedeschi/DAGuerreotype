@@ -230,10 +230,6 @@ def parse_default_model_args(
     # ------------------------------------------------ SparseMAP ------------------------------------------------
 
     parser.add_argument(
-        "--smap_tmp", type=float, default=1.0, help="SparseMap temperature"
-    )
-
-    parser.add_argument(
         "--smap_init_theta", type=str, default="zeros", choices=["zeros", "variances"]
     )
 
@@ -252,7 +248,6 @@ def parse_default_model_args(
     )
 
     # SPARSE MAX ARGS
-    parser.add_argument('--smax_tmp', type=float, default=1.)
     parser.add_argument('--smax_max_k', type=int, default=10)
 
     args, _ = parser.parse_known_args()
