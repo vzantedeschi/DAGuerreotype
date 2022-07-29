@@ -47,7 +47,8 @@ Bilevel + LARS is working, evaluation pipeline to be finalized
 - metrics with Markov eqiv. classes !!!!!! @matt
 - debiased LARS @vale
 - SID without R 
-- write a script that installs everything needed!!!!
+- write a decent requirement for python packages
+  - write a script that installs everything needed!!!! :-o
 - check the bias issue! (no bias in linear & non-linear models) [low priority]
 - etc....
 

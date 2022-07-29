@@ -162,8 +162,8 @@ class ParametricGDFitting(Equations, ABC):
 
     @classmethod   # TODO this should be the other way around... namely construct the parser and args from hypers!
     def _hps_from_args(cls, args):
-        # todo also here we'd better decouple the hyperparameters
         return {
+            # note that the equations' optimizer parameters are different from those of the structure
             'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name=args.eq_optimizer, lr=args.lr),
             'n_iters': args.num_inner_iters,
             'l2_reg_strength': args.l2_eq
@@ -196,8 +196,8 @@ class ParametricGDFitting(Equations, ABC):
 
         """
         return self.l2_reg_strength * torch.stack([
-                (p**2).sum(tuple(range(1, p.ndim))) for p in self.parameters()
-                # todo probably better mean than sum here
+                (p**2).mean(tuple(range(1, p.ndim))) for p in self.parameters()
+                # todo probably better mean than sum here  @ vale?  (previously was sum)
             ]).sum(0)
 
     def forward(self, X, dags):
@@ -222,7 +222,7 @@ class LinearEquations(ParametricGDFitting):
     def init_parameters(self, num_structures):
         # W[:, p, c] one weight from parent p to child c
         # W[0]'s column c reconstructs node c
-        # TODO why no bias?
+        # TODO [low priority] add bias, not needed atm
         self.W = _initialize_param(num_structures, self.d, self.d)
 
     def _forward_impl(self, masked_X):
@@ -242,7 +242,7 @@ class NonlinearEquations(ParametricGDFitting):
         self.W1 = None
         self.b1 = None
         self.W2 = None
-        # todo why no b2?
+        # todo add bias [low priority] see liner eq
         super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters)
 
     @classmethod
