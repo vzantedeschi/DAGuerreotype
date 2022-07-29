@@ -4,15 +4,15 @@ NOTE: big refactoring on this branch, it's still WIP.
 
 Divided the old modules.py into three modules. Removed bernoulli.py (now in sparsifiers.py)
 
-For joint optimization run with default args
+For joint optimization add the joint argument
 
 ```bash
 python -m daguerreo.run_model --joint
 ```
 
-For bilevel just add the --bilevel argument. 
+For bileve leave default
 ```bash
-python -m daguerreo.run_model --bilevel
+python -m daguerreo.run_model
 ```
 
 This will run on the Sachs dataset.
@@ -24,13 +24,19 @@ python -m daguerreo.run_model --dataset synthetic
 
 Bilevel + LARS is working, evaluation pipeline to be finalized
 
-## TODOs
-- Top-K SparseMax
+## TODOs coding
+- ~~Top-K SparseMax~~
 - HPO pipeline
 - storing results outside wandb
 - metrics with Markov eqiv. classes
 - write a script that installs everything needed!!!!
+- check the bias issue! (no bias in linear & non-linear models)!!
 - etc....
+
+## TODOs experiments
+
+- sparsemax 
+- bilvel vs joint (fair comparrison with same:(i) runtime! (ii) number of "seen" DAGS)
 
 ## Installation instructions
 
