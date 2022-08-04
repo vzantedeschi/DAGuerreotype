@@ -262,3 +262,13 @@ def parse_pipeline_args() -> argparse.ArgumentParser:
     _, argparser = parse_default_model_args(argparser=argparser)
 
     return argparser
+
+def parse_tuning_args() -> argparse.ArgumentParser:
+    argparser = argparse.ArgumentParser(description="Hyper-Parameter Tuning")
+    argparser.add_argument("--num_seeds", type=int, default=3, help="number of seeds/datasets per trial (seed results are averaged)")
+    argparser.add_argument("--num_trials", type=int, default=2, help="number of sets of hp to be tested")
+
+    _, argparser = parse_default_data_gen_args(argparser=argparser)
+    _, argparser = parse_default_model_args(argparser=argparser)
+
+    return argparser
