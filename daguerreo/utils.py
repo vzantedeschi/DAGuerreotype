@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from torch.optim import LBFGS, SGD, Adam, AdamW, Optimizer
 from pathlib import Path
 
+import causaldag as cd
 
 def get_wandb_mode(args):
     if not args.wandb:
@@ -143,4 +144,15 @@ def markov_eqiv_class(dag: np.ndarray):
     Returns: a list of matrices representing all the dags in the Markov equivalence class
     """
     # TODO @matt
-    raise NotImplementedError()
+    d = dag.shape[0]
+    dag_edges = np.transpose(np.nonzero(dag))
+    dag_edges = {tuple(e) for e in dag_edges}
+    dag = cd.DAG(arcs=dag_edges)
+    cpdag = dag.cpdag()
+    all_dags = cpdag.all_dags()
+    A = np.zeros((d,d,len(all_dags)))
+    for i, g in enumerate(all_dags):
+        inds = np.array(list(g))
+        A[inds[:,0], inds[:,1], i] = 1
+
+    return A
