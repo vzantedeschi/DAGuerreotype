@@ -16,11 +16,9 @@ class StructureCase(unittest.TestCase):
         for i in range(1):
             self.setUp()
             alphas, complete_dags, reg = self.smap_str()
-            map = self.smap_str.map()
+            map_ordering = self.smap_str.map()
 
-            mat_map = self.smap_str.complete_graph_from_ordering(map)
-
-
+            mat_map = self.smap_str.complete_graph_from_ordering(map_ordering)
 
             test = torch.all(complete_dags[0] == mat_map[0])
             assert test
