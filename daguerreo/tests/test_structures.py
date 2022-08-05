@@ -13,7 +13,7 @@ class StructureCase(unittest.TestCase):
         self.smap_str = sr.SparseMapSVStructure(self.d, init)
 
     def test_map(self):
-        for i in range(1):
+        for i in range(100):
             self.setUp()
             alphas, complete_dags, reg = self.smap_str()
             map_ordering = self.smap_str.map()
