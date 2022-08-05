@@ -50,6 +50,8 @@ Bilevel + LARS is working, evaluation pipeline to be finalized
 - write a decent requirement for python packages
   - write a script that installs everything needed!!!! :-o
 - check the bias issue! (no bias in linear & non-linear models) [low priority]
+- add interventional datasets @jean
+- refactor todos as seen in code @jean
 - etc....
 
 ### Experiments
