@@ -7,8 +7,8 @@ import torch
 
 class StructureCase(unittest.TestCase):
 
-    def setUp(self) -> None:
-        self.d = 100
+    def setUp(self, d=100) -> None:
+        self.d = d
         init = torch.randn(self.d)
         self.smap_str = sr.SparseMapSVStructure(self.d, init)
 
@@ -22,7 +22,3 @@ class StructureCase(unittest.TestCase):
 
             test = torch.all(complete_dags[0] == mat_map[0])
             assert test
-
-
-if __name__ == '__main__':
-    c = StructureCase()

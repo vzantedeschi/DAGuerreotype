@@ -141,7 +141,7 @@ class TopKSparseMaxSVStructure(_ScoreVectorStructure):
     @classmethod
     def _hps_from_args(cls, args):
         return {
-            'smax_tmp': args.smax_tmp,
+            # 'smax_tmp': args.smax_tmp,
             'smax_max_k': args.smax_max_k,
         }
 
@@ -155,7 +155,8 @@ class TopKSparseMaxSVStructure(_ScoreVectorStructure):
 
 
 AVAILABLE = {
-    'tk_sp_max': TopKSparseMaxSVStructure
+    'tk_sp_max': TopKSparseMaxSVStructure,
+    'sp_map': SparseMapSVStructure
     # TODO add oracle fixed, etc, etc..
 }
 
