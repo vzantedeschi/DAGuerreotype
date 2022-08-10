@@ -75,7 +75,7 @@ class _ScoreVectorStructure(Structure, ABC):
 
         """
         # TODO not super happy of all these reshaping :; maybe we should keep the theta as a vector and reshape it
-        #         when calling sparsemap
+        #         when calling sparsemap  (btw @Vlad is there a specific reason why sparseMAP requires a matrix?)
         sorted_indices = torch.argsort(self.theta.view(-1), dim=0)
         inverse_permutation = torch.argsort(sorted_indices)
         return inverse_permutation.view(1, -1)
@@ -112,7 +112,7 @@ class SparseMapSVStructure(_ScoreVectorStructure):
             'smap_iter': args.smap_iter,
         }
 
-    def _training_forward(self):
+    def _training_forward(self, return_ordering=False):
         # call the sparseMAP rank procedure.
         # it returns a vector of probas and a matrix of integer permutations.
         # orderings[0] is the inverse permutation of argsort(self.theta)
@@ -122,18 +122,15 @@ class SparseMapSVStructure(_ScoreVectorStructure):
             # this is a good place to do perturb & map insted
             self.theta / self.smap_tmp,
             init=self.smap_init, max_iter=self.smap_iter)
+        if return_ordering: return alphas, orderings
 
-        # TODO possibly add eval branch that returns the MAP here,
-        # although - not so sure why we should take the MAP,
-        # can't we keep the probability distribution also at eval time?
         return (alphas,
                 self.complete_graph_from_ordering(orderings),
                 self.regularizer())
 
 
 class TopKSparseMaxSVStructure(_ScoreVectorStructure):
-    def __init__(self, d, theta_init, l2_reg_strength,
-                 smax_max_k, smax_tmp=1.) -> None:
+    def __init__(self, d, theta_init, smax_max_k, l2_reg_strength=0., smax_tmp=1.) -> None:
         super().__init__(d, theta_init, l2_reg_strength)
         self.smax_tmp = smax_tmp
         self.smax_max_k = smax_max_k
@@ -145,10 +142,11 @@ class TopKSparseMaxSVStructure(_ScoreVectorStructure):
             'smax_max_k': args.smax_max_k,
         }
 
-    def _training_forward(self):
+    def _training_forward(self, return_ordering=False):
         # TODO @vlad here need to give a vector as input but sparsemap seem to require d x 1 matrix, right? make same?
         alphas, orderings = sparsemax_rank(self.theta.view(-1) / self.smax_tmp,
                                            max_k=self.smax_max_k)
+        if return_ordering: return alphas, orderings
         return (alphas,
                 self.complete_graph_from_ordering(orderings),
                 self.regularizer())
