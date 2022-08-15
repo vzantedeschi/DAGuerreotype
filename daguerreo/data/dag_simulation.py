@@ -65,7 +65,7 @@ def simulate_dag(d: int, s0: int, graph_type: str) -> np.ndarray:
 
 def simulate_parameter(
     B: np.ndarray,
-    w_ranges: tuple[tuple[float, float], tuple[float, float]] = (
+    w_ranges: "tuple[tuple[float, float], tuple[float, float]]" = (
         (-2, -0.5),
         (0.5, 2),
     ),

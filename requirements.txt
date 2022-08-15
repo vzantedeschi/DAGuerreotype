@@ -1,0 +1,4 @@
+cdt==0.5.23
+entmax==1.0
+igraph==0.9.11
+wandb==0.13.1

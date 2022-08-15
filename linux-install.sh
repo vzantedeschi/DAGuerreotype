@@ -10,5 +10,11 @@ export EIGEN_DIR=`readlink -f eigen-master`
 cd lp-sparsemap-master
 python setup.py build_clib
 pip install -e .
-cd ../dag-learning
 python3 setup.py build_ext --inplace
+# other dependencies
+cd ../
+wget --no-check-certificate --content-disposition https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+cd ../dag-learning
+pip install -r requirements.txt
