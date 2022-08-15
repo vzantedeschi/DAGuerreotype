@@ -1,5 +1,6 @@
 import numpy as np
 
+from cdt.metrics import SID
 from .utils import get_topological_rank
 
 # -------------------------------------------------------------------------- METRICS
@@ -71,18 +72,34 @@ def topological_rank_corr(B_true: np.ndarray, B_est: np.ndarray) -> dict:
 
     return {"topc": coeff}
 
+# dtop metric from https://arxiv.org/abs/2203.04413
+def topological_order_divergence(B_true: np.ndarray, order_est: np.ndarray) -> dict:
+
+    d = len(B_true)
+
+    # get mask of edges that are not consistent with estimated ordering
+    M = np.tril(np.ones((d, d)), k=1)
+    mask = M[order_est[..., None], order_est[:, None]]
+
+    # count all true edges that are not consistent with estimated ordering
+    coeff = (B_true * mask).sum()
+
+    return {"dtop": coeff}
 
 # ------------------------------------------------------------------ DAG EVALUATION
 
 
-def evaluate_binary(true_B, estimated_B):
-
-    res_dict = {}
+def evaluate_binary(true_B, estimated_B, estimated_order=None):
 
     accuracies = count_accuracy(B_true=true_B, B_est=estimated_B)
     topc = topological_rank_corr(true_B, estimated_B)
+    sid = SID(true_B, estimated_B)
 
+    res_dict = {"sid": sid}
     res_dict |= accuracies
     res_dict |= topc
+
+    if estimated_order is not None:
+        res_dict |= topological_order_divergence(true_B, estimated_order)
 
     return res_dict

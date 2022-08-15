@@ -134,7 +134,7 @@ def log_graph(dag_G: np.ndarray, name: str) -> None:
     return a_dag
 
 
-def markov_eqiv_class(dag: np.ndarray):
+def markov_equiv_class(dag: np.ndarray):
     """
 
     Args:
@@ -144,3 +144,4 @@ def markov_eqiv_class(dag: np.ndarray):
     """
     # TODO @matt
     raise NotImplementedError()
+
