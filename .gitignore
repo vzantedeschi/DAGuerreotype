@@ -1,6 +1,9 @@
 .idea
+.RData
+.Rhistory
 
 build/*
 *.so
 **/__pycache__/*
 .eggs
+**/_sparsemap.cpp

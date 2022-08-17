@@ -93,9 +93,10 @@ def evaluate_binary(true_B, estimated_B, estimated_order=None):
 
     accuracies = count_accuracy(B_true=true_B, B_est=estimated_B)
     topc = topological_rank_corr(true_B, estimated_B)
-    sid = SID(true_B, estimated_B)
+    # sid = SID(true_B, estimated_B)
 
-    res_dict = {"sid": sid}
+    res_dict = {"sid": SID(true_B, estimated_B).item()}
+    # res_dict = {}
     res_dict |= accuracies
     res_dict |= topc
 
