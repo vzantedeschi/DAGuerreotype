@@ -33,7 +33,7 @@ class MultiObjectiveHPO():
         args.lr = trial.suggest_loguniform("lr", 1e-4, 1e-1)
 
         if args.structure == "tk_sp_max":
-            args.smax_max_k = trial.suggest_discrete_uniform("smax_max_k", 2, 20, q=2)
+            args.smax_max_k = int(trial.suggest_discrete_uniform("smax_max_k", 2, 20, q=2))
 
     def __call__(self, trial):
 
@@ -54,7 +54,7 @@ class MultiObjectiveHPO():
         log_dict = {}
         for n, noise in enumerate(args.noise_models):
 
-            logging.info(f"Running with noise model \033[1m{noise}\033[0m")
+            print(f"Running with noise model \033[1m{noise}\033[0m")
             log_dict[noise] = {}
             args.sem_type = noise
 

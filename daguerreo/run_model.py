@@ -49,7 +49,7 @@ def run(args, wandb_mode, save_dir):
         log_graph(dag_W_torch.detach().numpy(), "True")
 
         logging.info(
-            f" Data seed: {seed}, run model {args.model} with {args.equations} and SMAP's initial theta = {args.smap_init_theta}"
+            f" Data seed: {seed}, run Daguerro with {args.equations} and SMAP's initial theta = {args.smap_init_theta}"
         )
 
         daguerro = Daguerro.initialize(X_torch, args, args.joint)
