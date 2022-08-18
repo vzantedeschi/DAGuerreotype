@@ -1,6 +1,8 @@
 import numpy as np
 
-from cdt.metrics import SID
+import causaldag as cd
+
+from cdt.metrics import SID, SHD_CPDAG
 from .utils import get_topological_rank
 
 # -------------------------------------------------------------------------- METRICS
@@ -56,8 +58,11 @@ def count_accuracy(B_true: np.ndarray, B_est: np.ndarray) -> dict:
     extra_lower = np.setdiff1d(pred_lower, cond_lower, assume_unique=True)
     missing_lower = np.setdiff1d(cond_lower, pred_lower, assume_unique=True)
     shd = len(extra_lower) + len(missing_lower) + len(reverse)
-
-    return {"fdr": fdr, "tpr": tpr, "fpr": fpr, "shd": shd, "nnz": pred_size}
+    
+    B_cpdag_true = cd.DAG.from_amat(B_true).cpdag()
+    B_cpdag_est = cd.DAG.from_amat(B_est).cpdag()
+    
+    return {"fdr": fdr, "tpr": tpr, "fpr": fpr, "shd": shd, "nnz": pred_size, "shdc": B_cpdag_true.shd(B_cpdag_est)}
 
 
 def topological_rank_corr(B_true: np.ndarray, B_est: np.ndarray) -> dict:
@@ -70,7 +75,7 @@ def topological_rank_corr(B_true: np.ndarray, B_est: np.ndarray) -> dict:
     if np.isnan(coeff):
         coeff = 0.0
 
-    return {"topc": coeff}
+    return coeff
 
 # dtop metric from https://arxiv.org/abs/2203.04413
 def topological_order_divergence(B_true: np.ndarray, order_est: np.ndarray) -> dict:
@@ -84,23 +89,25 @@ def topological_order_divergence(B_true: np.ndarray, order_est: np.ndarray) -> d
     # count all true edges that are not consistent with estimated ordering
     coeff = (B_true * mask).sum()
 
-    return {"dtop": coeff}
+    return coeff
+
+def eval_order(B_true: np.ndarray, B_est: np.ndarray, order_est: np.ndarray=None):
+
+    res = {"topc": topological_rank_corr(B_true, B_est)}
+
+    if order_est is not None:
+        res |= {"dtop": topological_order_divergence(B_true, order_est)}
+
+    return res
 
 # ------------------------------------------------------------------ DAG EVALUATION
 
 
-def evaluate_binary(true_B, estimated_B, estimated_order=None):
-
-    accuracies = count_accuracy(B_true=true_B, B_est=estimated_B)
-    topc = topological_rank_corr(true_B, estimated_B)
-    # sid = SID(true_B, estimated_B)
+def evaluate_binary(true_B: np.array, estimated_B: np.array, estimated_order: np.array=None):
 
     res_dict = {"sid": SID(true_B, estimated_B).item()}
     # res_dict = {}
-    res_dict |= accuracies
-    res_dict |= topc
-
-    if estimated_order is not None:
-        res_dict |= topological_order_divergence(true_B, estimated_order)
+    res_dict |= count_accuracy(B_true=true_B, B_est=estimated_B)
+    res_dict |= eval_order(true_B, estimated_B)
 
     return res_dict
