@@ -1,7 +1,9 @@
 import logging
-
-import torch
 import wandb
+
+import numpy as np
+
+from pathlib import Path
 
 from .args import parse_pipeline_args
 from .data.datasets import get_dataset
@@ -16,6 +18,15 @@ def run(args, wandb_mode):
     config = vars(args)
 
     for seed in range(args.num_seeds):
+        
+        config["data_seed"] = seed
+        name = f"seed={seed}"
+        group = get_group_name(args)
+
+        save_path = Path(args.results_path) / args.project /f"{group}-{name}.npy" 
+
+        if save_path.exists(): # do not rerun same experiment again
+            continue
 
         init_seeds(seed=seed)
 
@@ -24,18 +35,12 @@ def run(args, wandb_mode):
             args, to_torch=True, seed=seed + 1
         )
 
-        config["data_seed"] = seed
-
-        name = f"seed={seed}"
-
-        # name_path = project_path / f"{group}-{name}.npy"
-        # # if not name_path.is_file():
-
         wandb_run = wandb.init(
             dir=args.results_path,
+            entity=args.entity,
             project=args.project,
             name=name,
-            group=get_group_name(args),
+            group=group,
             config=config,
             reinit=True,
             mode=wandb_mode,
@@ -46,48 +51,33 @@ def run(args, wandb_mode):
         logging.info(
             f" Data seed: {seed}, run model {args.model} with {args.equations} and SMAP's initial theta = {args.smap_init_theta}"
         )
-        # log_true_graph(dag_G=dag_W_torch.numpy(), args=args)
 
-        # estimator_cls = get_estimator_cls(args.estimator)
         daguerro = Daguerro.initialize(X_torch, args, args.joint)
 
         log_dict = daguerro(X_torch, nll_ev, args)
 
-        if args.wandb:
-            wandb.log(log_dict)
+        wandb.log(log_dict)
         print(log_dict)
 
         # todo EVAL part still needs to be done properly
         daguerro.eval()
 
-        x_hat, dags = daguerro(X_torch, nll_ev, args)
+        _, dags = daguerro(X_torch, nll_ev, args)
         estimated_B = dags[0].detach().numpy()
         log_graph(estimated_B, "learned")
 
         log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
 
-        if args.wandb:
-            wandb.log(log_dict)
-            wandb_run.finish()
+        wandb.log(log_dict)
+        wandb_run.finish()
 
         logging.info(log_dict)
-
-        # --- old ----
-        # model.fit_mode(X_torch, nll_ev, args)
-        #
-        # # evaluate
-        # estimated_B = model.get_binary_adj().detach().numpy()
-        #
-        # log_graph(estimated_B, "learned")
-        #
-        # log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
-        #
-        # wandb.log(log_dict)
-        # logging.info(log_dict)
-        # wandb_run.finish()
+        np.save(save_path, estimated_B)
 
 
 if __name__ == "__main__":
+
+    import torch
 
     torch.set_default_dtype(torch.double)
 
