@@ -75,7 +75,7 @@ def parse_default_data_gen_args(
         augmented_parser.add_argument(
             "--noise_scale",
             type=float,
-            default=0.5,
+            default=1,
             help="scale parameter of (independent) additive noise",
         )
 
@@ -83,21 +83,6 @@ def parse_default_data_gen_args(
 
         augmented_parser.add_argument(
             "--s0", type=int, default=2 * args.num_nodes, help="expected num of edges"
-        )
-
-        augmented_parser.add_argument(
-            "--batch_size",
-            type=int,
-            default=args.num_samples,
-            help="size of batches for stochastic optimization",
-        )
-
-    else:
-        augmented_parser.add_argument(
-            "--batch_size",
-            type=int,
-            default=1000,
-            help="size of batches for stochastic optimization",
         )
 
     augmented_parser.add_argument(
@@ -116,20 +101,6 @@ def parse_default_model_args(
 ) -> Tuple[argparse.Namespace, argparse.ArgumentParser]:
     parser = (
         argparser if argparser else argparse.ArgumentParser(description="Daguerreo")
-    )
-
-    # TODO delete me??? or not? @ vale
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="Daguerreo",
-        choices=[
-            "Daguerreo",
-            "Oracle",
-            "Random",
-            "FixedAdj",
-            "FixedPerm",
-        ],
     )
 
     parser.add_argument(
@@ -154,26 +125,10 @@ def parse_default_model_args(
 
     _add_from_module('--equations', equations)
 
-    # TODO: add random ordering (what's this? @vale)
-    parser.add_argument(
-        "--fixed_perm",
-        type=str,
-        default="variances",
-        choices=["optimal", "variances"],
-    )
-
     # -------------------------------------------------- MLP --------------------------------------------------
 
     parser.add_argument(
         "--hidden", type=int, default=10, help="Dimensions of hidden layers"
-    )
-
-    # TODO @vale what's this? delete?
-    parser.add_argument(
-        "--nonlinear",
-        default=False,
-        action="store_true",
-        help="whether use nonlinear graph",
     )
 
     # -------------------------------------------------- Training ---------------------------------------------
@@ -192,8 +147,6 @@ def parse_default_model_args(
         choices=["adam", "adamW", "sgd"],
     )
     parser.add_argument("--lr", type=float, default=1e-1)
-
-    args, _ = parser.parse_known_args()
 
     parser.add_argument(
         "--device",
@@ -218,7 +171,7 @@ def parse_default_model_args(
         help="l2 penalty over all models weights (not graph)",
     )
 
-    parser.add_argument("--num_epochs", type=int, default=500)
+    parser.add_argument("--num_epochs", type=int, default=1000)
     parser.add_argument("--num_inner_iters", type=int, default=100)
 
     argparser.add_argument(
@@ -248,7 +201,8 @@ def parse_default_model_args(
         help="SparseMap: number of iterations of QP solver",
     )
 
-    # SPARSE MAX ARGS
+    # ------------------------------------------------ SparseMAX ------------------------------------------------
+    
     parser.add_argument('--smax_max_k', type=int, default=10)
 
     args, _ = parser.parse_known_args()
@@ -267,7 +221,16 @@ def parse_pipeline_args() -> argparse.ArgumentParser:
 def parse_tuning_args() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser(description="Hyper-Parameter Tuning")
     argparser.add_argument("--num_seeds", type=int, default=3, help="number of seeds/datasets per trial (seed results are averaged)")
-    argparser.add_argument("--num_trials", type=int, default=2, help="number of sets of hp to be tested")
+    argparser.add_argument("--num_trials", type=int, default=10, help="number of sets of hp to be tested")
+    argparser.add_argument("--noise_models", type=list, default=[
+                "gauss",
+                "gauss-heter",
+                "exp",
+                "gumbel",
+                "uniform",
+                "logistic",
+                "poisson",
+            ], help="noise models to be used")
 
     _, argparser = parse_default_data_gen_args(argparser=argparser)
     _, argparser = parse_default_model_args(argparser=argparser)

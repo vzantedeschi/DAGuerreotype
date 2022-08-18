@@ -23,16 +23,20 @@ def get_wandb_mode(args):
 
 def get_group_name(args):
     # experiment naming
+
+    group_name = f"{args.structure}-{args.sparsifier}-{args.equations}-std={args.standardize}"
     try:
-        group_name = f"{args.model}-{args.graph_type}-{args.sem_type}-{args.num_nodes}-{args.num_samples}"  # for synthetic data
+        group_name += f"-{args.graph_type}-{args.sem_type}-{args.num_nodes}"  # for synthetic data
     except:
-        group_name = f"{args.model}-{args.dataset}-nonlin={args.nonlinear}-std={args.standardize}"  # for real data
+        group_name += f"-{args.dataset}"  # for real data
     return group_name
 
 def init_project_path(args):
     project = f"{args.project}"
     project_path = Path(args.results_path) / project
     project_path.mkdir(parents=True, exist_ok=True)
+
+    return project_path
 
 def init_seeds(seed: int) -> None:
     torch.manual_seed(seed)
