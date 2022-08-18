@@ -1,10 +1,12 @@
 import logging
+
 import numpy as np
 import optuna
 import torch
 import wandb
 
 from copy import copy
+from pathlib import Path
 
 from .args import parse_tuning_args
 from .data.datasets import get_dataset
@@ -27,6 +29,11 @@ class MultiObjectiveHPO():
         args.pruning_reg = trial.suggest_loguniform("pruning_reg", 1e-6, 1e-1)
         args.l2_theta = trial.suggest_loguniform("l2_theta", 1e-6, 1e-1)
         args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
+        args.lr_theta = trial.suggest_loguniform("lr_theta", 1e-4, 1e-1)
+        args.lr = trial.suggest_loguniform("lr", 1e-4, 1e-1)
+
+        if args.structure == "tk_sp_max":
+            args.smax_max_k = trial.suggest_discrete_uniform("smax_max_k", 2, 20, q=2)
 
     def __call__(self, trial):
 
@@ -35,6 +42,7 @@ class MultiObjectiveHPO():
        
         wandb_run = wandb.init(
             dir=args.results_path,
+            entity=args.entity,
             project=self.project,
             name=f"trial_{trial.number}",
             group=self.group,
@@ -43,40 +51,42 @@ class MultiObjectiveHPO():
             mode=self.wandb_mode,
         )
         
-        losses, shds, l0s, topcs = [], [], [], []
-        for seed in range(args.num_seeds):
+        log_dict = {}
+        for noise in args.noise_models:
+            logging.info(f"Running with noise model \033[1m{noise}\033[0m")
+            log_dict[noise] = {}
+            args.sem_type = noise
 
-            init_seeds(seed=seed)
+            for seed in range(args.num_seeds):
 
-            dag_B_torch, dag_W_torch, X_torch = get_dataset(
-                args, to_torch=True, seed=seed + 1
-            )
+                init_seeds(seed=seed)
 
-            daguerro = Daguerro.initialize(X_torch, args, args.joint)
+                dag_B_torch, _, X_torch = get_dataset(
+                    args, to_torch=True, seed=seed + 1
+                )
 
-            log_dict = daguerro(X_torch, nll_ev, args)
+                daguerro = Daguerro.initialize(X_torch, args, args.joint)
 
-            # todo EVAL part still needs to be done properly
-            daguerro.eval()
+                daguerro(X_torch, nll_ev, args)
 
-            x_hat, dags = daguerro(X_torch, nll_ev, args)
-            estimated_B = dags[0].detach().numpy()
+                # todo EVAL part still needs to be done properly
+                daguerro.eval()
 
-            log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
+                _, dags = daguerro(X_torch, nll_ev, args)
+                estimated_B = dags[0].detach().numpy()
 
-            losses.append(nll_ev(x_hat, X_torch).item())
-            shds.append(log_dict["shd"])
-            topcs.append(log_dict["topc"])
-            l0s.append(log_dict["nnz"])
+                log_dict[noise][seed] = evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
 
-        avg_loss, avg_l0 = np.mean(losses), np.mean(l0s)
-        avg_shd, avg_topc = np.mean(shds), np.mean(topcs)
+            log_dict[noise]["avg_shdc"] = np.mean([log_dict[noise][s]["shdc"] for s in range(args.num_seeds)])
+            log_dict[noise]["avg_sid"] = np.mean([log_dict[noise][s]["sid"] for s in range(args.num_seeds)])
+        
+        log_dict["avg_shdc"] = np.mean([log_dict[n]["avg_shdc"] for n in args.noise_models])
+        log_dict["avg_sid"] = np.mean([log_dict[n]["avg_sid"] for n in args.noise_models])
 
-        if args.wandb:
-            wandb.log(log_dict)
-            wandb_run.finish()
+        wandb.log(log_dict)
+        wandb_run.finish()
 
-        return avg_shd, avg_topc
+        return log_dict["avg_shdc"], log_dict["avg_sid"]
 
 if __name__ == "__main__":
 
@@ -86,16 +96,24 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     wandb_mode = get_wandb_mode(args)
-    init_project_path(args=args)
+    save_dir = init_project_path(args=args)
 
     group = get_group_name(args)
 
-    objective = MultiObjectiveHPO(args, "hpo", group, wandb_mode)
+    objective = MultiObjectiveHPO(args, args.project, group, wandb_mode)
     
     study = optuna.create_study(
             study_name="hpo",
-            directions= ["minimize", "maximize"],
+            directions= ["minimize", "minimize"],
             pruner=optuna.pruners.MedianPruner()
     )
 
     study.optimize(objective, n_trials=args.num_trials)
+
+    df = study.trials_dataframe(attrs=("number", "value", "params", "state"))
+
+    best_ids = [t.number for t in study.best_trials]
+    df_best = df.iloc[best_ids, :] 
+
+    df.to_csv(save_dir / f'{group}-trials.csv')
+    df_best.to_csv(save_dir / f'{group}-best-trials.csv')
