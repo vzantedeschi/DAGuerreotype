@@ -21,12 +21,15 @@ def get_wandb_mode(args):
         wandb_mode = None
     return wandb_mode
 
-def get_group_name(args):
+def get_group_name(args, log_graph_sem=True):
     # experiment naming
 
     group_name = f"{args.structure}-{args.sparsifier}-{args.equations}-std={args.standardize}"
     try:
-        group_name += f"-{args.graph_type}-{args.sem_type}-{args.num_nodes}"  # for synthetic data
+        if log_graph_sem:
+            group_name += f"-{args.graph_type}-{args.sem_type}-{args.num_nodes}"  # for synthetic data
+        else:
+            group_name += f"-{args.num_nodes}"  # for synthetic data
     except:
         group_name += f"-{args.dataset}"  # for real data
     return group_name

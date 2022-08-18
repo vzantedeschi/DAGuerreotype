@@ -52,34 +52,49 @@ class MultiObjectiveHPO():
         )
         
         log_dict = {}
-        for noise in args.noise_models:
+        for n, noise in enumerate(args.noise_models):
+
             logging.info(f"Running with noise model \033[1m{noise}\033[0m")
             log_dict[noise] = {}
             args.sem_type = noise
 
-            for seed in range(args.num_seeds):
+            for graph in args.graph_types:
+                
+                logging.info(f"graph type \033[1m{graph}\033[0m")
+                log_dict[noise][graph] = []
+                args.graph_type = graph
 
-                init_seeds(seed=seed)
+                for seed in range(args.num_seeds):
 
-                dag_B_torch, _, X_torch = get_dataset(
-                    args, to_torch=True, seed=seed + 1
-                )
+                    init_seeds(seed=seed)
 
-                daguerro = Daguerro.initialize(X_torch, args, args.joint)
+                    dag_B_torch, _, X_torch = get_dataset(
+                        args, to_torch=True, seed=seed + 1
+                    )
+                    
+                    try:
+                        daguerro = Daguerro.initialize(X_torch, args, args.joint)
 
-                daguerro(X_torch, nll_ev, args)
+                        daguerro(X_torch, nll_ev, args)
 
-                # todo EVAL part still needs to be done properly
-                daguerro.eval()
+                        # todo EVAL part still needs to be done properly
+                        daguerro.eval()
 
-                _, dags = daguerro(X_torch, nll_ev, args)
-                estimated_B = dags[0].detach().numpy()
+                        _, dags = daguerro(X_torch, nll_ev, args)
 
-                log_dict[noise][seed] = evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
+                        estimated_B = dags[0].detach().numpy()
 
-            log_dict[noise]["avg_shdc"] = np.mean([log_dict[noise][s]["shdc"] for s in range(args.num_seeds)])
-            log_dict[noise]["avg_sid"] = np.mean([log_dict[noise][s]["sid"] for s in range(args.num_seeds)])
-        
+                        log_dict[noise][graph].append(evaluate_binary(dag_B_torch.detach().numpy(), estimated_B))
+                    
+                    except RuntimeError as e:
+                        logging.error(e)
+                        logging.info("Pruning current trial")
+
+                        raise optuna.TrialPruned()
+
+            log_dict[noise]["avg_shdc"] = np.mean([log_dict[noise][g][s]["shdc"] for g in args.graph_types for s in range(args.num_seeds)])
+            log_dict[noise]["avg_sid"] = np.mean([log_dict[noise][g][s]["sid"] for g in args.graph_types for s in range(args.num_seeds)])
+
         log_dict["avg_shdc"] = np.mean([log_dict[n]["avg_shdc"] for n in args.noise_models])
         log_dict["avg_sid"] = np.mean([log_dict[n]["avg_sid"] for n in args.noise_models])
 
@@ -98,14 +113,14 @@ if __name__ == "__main__":
     wandb_mode = get_wandb_mode(args)
     save_dir = init_project_path(args=args)
 
-    group = get_group_name(args)
+    group = get_group_name(args, log_graph_sem=False)
 
     objective = MultiObjectiveHPO(args, args.project, group, wandb_mode)
     
     study = optuna.create_study(
             study_name="hpo",
             directions= ["minimize", "minimize"],
-            pruner=optuna.pruners.MedianPruner()
+            # pruner=optuna.pruners.MedianPruner() # pruning not supported in MultiObjective
     )
 
     study.optimize(objective, n_trials=args.num_trials)

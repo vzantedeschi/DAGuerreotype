@@ -228,9 +228,8 @@ def parse_tuning_args() -> argparse.ArgumentParser:
                 "exp",
                 "gumbel",
                 "uniform",
-                "logistic",
-                "poisson",
-            ], help="noise models to be used")
+            ], help="noise models to be tested")
+    argparser.add_argument("--graph_types", type=list, default=["ER", "SF", "BP"], help="graph types to be tested")
 
     _, argparser = parse_default_data_gen_args(argparser=argparser)
     _, argparser = parse_default_model_args(argparser=argparser)
