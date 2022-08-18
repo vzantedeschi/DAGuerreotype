@@ -2,8 +2,6 @@ from itertools import chain
 from typing import Type, Optional
 
 import torch
-import wandb
-from torch import nn
 from tqdm import tqdm
 
 # from modules import Structure, Sparsifier, Equations

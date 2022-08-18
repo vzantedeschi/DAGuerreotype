@@ -99,9 +99,9 @@ class SparseMapSVStructure(_ScoreVectorStructure):
     """
 
     def __init__(self, d, theta_init, l2_reg_strength=0., smap_init=False,
-                 smap_iter=100, smap_tmp=1.) -> None:
+                 smap_iter=100) -> None:
         super().__init__(d, theta_init, l2_reg_strength)
-        self.smap_tmp = smap_tmp
+
         self.smap_init = smap_init
         self.smap_iter = smap_iter
 
@@ -120,7 +120,7 @@ class SparseMapSVStructure(_ScoreVectorStructure):
         alphas, orderings = sparsemap_rank(
             # the actual parameter,
             # this is a good place to do perturb & map insted
-            self.theta / self.smap_tmp,
+            self.theta,
             init=self.smap_init, max_iter=self.smap_iter)
         if return_ordering: return alphas, orderings
 
@@ -130,9 +130,9 @@ class SparseMapSVStructure(_ScoreVectorStructure):
 
 
 class TopKSparseMaxSVStructure(_ScoreVectorStructure):
-    def __init__(self, d, theta_init, smax_max_k, l2_reg_strength=0., smax_tmp=1.) -> None:
+    def __init__(self, d, theta_init, l2_reg_strength=0., smax_max_k=5) -> None:
         super().__init__(d, theta_init, l2_reg_strength)
-        self.smax_tmp = smax_tmp
+
         self.smax_max_k = smax_max_k
 
     @classmethod
@@ -144,7 +144,7 @@ class TopKSparseMaxSVStructure(_ScoreVectorStructure):
 
     def _training_forward(self, return_ordering=False):
         # TODO @vlad here need to give a vector as input but sparsemap seem to require d x 1 matrix, right? make same?
-        alphas, orderings = sparsemax_rank(self.theta.view(-1) / self.smax_tmp,
+        alphas, orderings = sparsemax_rank(self.theta.view(-1),
                                            max_k=self.smax_max_k)
         if return_ordering: return alphas, orderings
         return (alphas,
