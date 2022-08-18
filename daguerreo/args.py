@@ -16,7 +16,8 @@ def parse_default_data_gen_args(
         argparser if argparser else argparse.ArgumentParser(description="GraphLearning")
     )
 
-    augmented_parser.add_argument("--project", type=str, default="dag")
+    augmented_parser.add_argument("--project", type=str, default="default")
+    augmented_parser.add_argument("--entity", type=str, default="daguerro")
     augmented_parser.add_argument(
         "--wandb",
         default=False,
