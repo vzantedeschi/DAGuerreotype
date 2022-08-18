@@ -13,7 +13,7 @@ from .utils import (get_group_name, get_wandb_mode, init_project_path,
                     init_seeds, log_graph, nll_ev)
 
 
-def run(args, wandb_mode):
+def run(args, wandb_mode, save_dir):
 
     config = vars(args)
 
@@ -23,7 +23,7 @@ def run(args, wandb_mode):
         name = f"seed={seed}"
         group = get_group_name(args)
 
-        save_path = Path(args.results_path) / args.project /f"{group}-{name}.npy" 
+        save_path = save_dir /f"{group}-{name}.npy" 
 
         if save_path.exists(): # do not rerun same experiment again
             continue
@@ -85,5 +85,5 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     wandb_mode = get_wandb_mode(args)
-    init_project_path(args=args)
-    run(args, wandb_mode)
+    save_dir = init_project_path(args=args)
+    run(args, wandb_mode, save_dir)
