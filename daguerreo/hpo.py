@@ -6,14 +6,13 @@ import torch
 import wandb
 
 from copy import copy
-from pathlib import Path
 
 from .args import parse_tuning_args
 from .data.datasets import get_dataset
 from .evaluation import evaluate_binary
 from .models import Daguerro
 from .utils import (get_group_name, get_wandb_mode, init_project_path,
-                    init_seeds, log_graph, nll_ev)
+                    init_seeds, nll_ev)
 
 class MultiObjectiveHPO():
 
@@ -94,9 +93,11 @@ class MultiObjectiveHPO():
 
             log_dict[noise]["avg_shdc"] = np.mean([log_dict[noise][g][s]["shdc"] for g in args.graph_types for s in range(args.num_seeds)])
             log_dict[noise]["avg_sid"] = np.mean([log_dict[noise][g][s]["sid"] for g in args.graph_types for s in range(args.num_seeds)])
+            log_dict[noise]["avg_topc"] = np.mean([log_dict[noise][g][s]["topc"] for g in args.graph_types for s in range(args.num_seeds)])
 
         log_dict["avg_shdc"] = np.mean([log_dict[n]["avg_shdc"] for n in args.noise_models])
         log_dict["avg_sid"] = np.mean([log_dict[n]["avg_sid"] for n in args.noise_models])
+        log_dict["avg_topc"] = np.mean([log_dict[n]["avg_topc"] for n in args.noise_models])
 
         wandb.log(log_dict)
         wandb_run.finish()
