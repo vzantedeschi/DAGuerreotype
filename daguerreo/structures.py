@@ -130,7 +130,7 @@ class SparseMapSVStructure(_ScoreVectorStructure):
 
 
 class TopKSparseMaxSVStructure(_ScoreVectorStructure):
-    def __init__(self, d, theta_init, smax_max_k, l2_reg_strength=0., smax_tmp=1.) -> None:
+    def __init__(self, d, theta_init, l2_reg_strength=0., smax_max_k=10, smax_tmp=1.) -> None:
         super().__init__(d, theta_init, l2_reg_strength)
         self.smax_tmp = smax_tmp
         self.smax_max_k = smax_max_k
