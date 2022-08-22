@@ -11,13 +11,19 @@ from . import equations
 def parse_default_data_gen_args(
     argparser: argparse.ArgumentParser = None,
 ) -> Tuple[argparse.Namespace, argparse.ArgumentParser]:
-    # -------------------------------------------------- Logistics --------------------------------------------------
+    # ------------------------------------------ Logistics --------------------------------------------
     augmented_parser = (
         argparser if argparser else argparse.ArgumentParser(description="GraphLearning")
     )
 
     augmented_parser.add_argument("--project", type=str, default="default")
     augmented_parser.add_argument("--entity", type=str, default="daguerro")
+    augmented_parser.add_argument(
+        "--gpu",
+        default=True,
+        action="store_true",
+        help="whether to use gpu if available",
+    )
     augmented_parser.add_argument(
         "--wandb",
         default=False,
@@ -218,9 +224,11 @@ def parse_pipeline_args() -> argparse.ArgumentParser:
 
     return argparser
 
+
 def parse_tuning_args() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser(description="Hyper-Parameter Tuning")
-    argparser.add_argument("--num_seeds", type=int, default=3, help="number of seeds/datasets per trial (seed results are averaged)")
+    argparser.add_argument("--num_seeds", type=int, default=3,
+                           help="number of seeds/datasets per trial (seed results are averaged)")
     argparser.add_argument("--num_trials", type=int, default=10, help="number of sets of hp to be tested")
     argparser.add_argument("--noise_models", type=list, default=[
                 "gauss",

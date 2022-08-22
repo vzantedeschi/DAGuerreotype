@@ -28,7 +28,7 @@ class NoSparsifier(Sparsifier):
     """Dummy class that does nothing :) """
 
     def init_parameters(self, num_structures):
-        pass
+        return self
 
     def forward(self, complete_dag): return complete_dag, 0
 
@@ -69,7 +69,7 @@ class BernoulliRV:
         :param theta: the success parameter in [0, 1]
         :return: a sample
         """
-        uni = torch.rand(self.shape)  # , generator=generator)
+        uni = torch.rand(self.shape, device=theta.device)  # , generator=generator)
         return (torch.sign(theta - uni) + 1) / 2
 
     def sampler(self):
@@ -155,6 +155,7 @@ class BernoulliSTEL0Sparsifier(_L0Sparsifier):
             0.5 * torch.ones((num_structures, self.d, self.d)),
             requires_grad=True
         )
+        return self
 
     def forward(self, complete_dags):
         self.pi.data.clamp(0.0, 1.0)  # make sure pi is in [0, 1] after updates (so no need of projecting!)

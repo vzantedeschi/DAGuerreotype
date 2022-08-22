@@ -1,6 +1,9 @@
 from abc import ABC
+from typing import Optional, Union
 
 import torch
+from torch import device
+from torch.nn.modules.module import T
 
 from .permutahedron import sparsemap_rank, sparsemax_rank
 from .utils import get_variances
@@ -29,7 +32,7 @@ class _ScoreVectorStructure(Structure, ABC):
     def __init__(self, d, theta_init, l2_reg_strength, **kwargs) -> None:
         super().__init__()
         self.theta = torch.nn.Parameter(theta_init.unsqueeze(1), requires_grad=True)
-        self.M = torch.triu(torch.ones((d, d)), diagonal=1)
+        self.register_buffer('M', torch.triu(torch.ones((d, d)), diagonal=1))  # enables correct
         self.l2_reg_strength = l2_reg_strength
 
     @classmethod

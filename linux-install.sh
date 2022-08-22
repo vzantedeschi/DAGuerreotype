@@ -1,3 +1,5 @@
+pip install wheel
+pip install -r requirements.txt
 cd ..
 pip install --upgrade cython
 wget --no-check-certificate --content-disposition https://gitlab.com/libeigen/eigen/-/archive/master/eigen-master.zip
@@ -17,5 +19,4 @@ cd ..
 # pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
 # wget --no-check-certificate --content-disposition https://cran.r-project.org/src/contrib/Archive/SID/SID_1.0.tar.gz
 cd dag-learning
-pip install -r requirements.txt
 python setup.py build_ext --inplace
