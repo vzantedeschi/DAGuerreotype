@@ -1,6 +1,6 @@
-cdt==0.5.23
-wandb==0.13.1
-optuna==2.10.1
+cdt>=0.5.23
+wandb>=0.13.1
+optuna>=2.10.1
 typing>=3.7.4.3
 setuptools>=62.3.2
 Cython>=0.29.30

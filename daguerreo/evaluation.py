@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 import causaldag as cd
@@ -104,8 +106,11 @@ def eval_order(B_true: np.ndarray, B_est: np.ndarray, order_est: np.ndarray=None
 
 
 def evaluate_binary(true_B: np.array, estimated_B: np.array, estimated_order: np.array=None):
-
-    res_dict = {"sid": SID(true_B, estimated_B).item()}
+    try:
+        res_dict = {"sid": SID(true_B, estimated_B).item()}
+    except FileNotFoundError:
+        logging.warning('SID not computable, R might be missing')
+        res_dict = {"sid": None}
     # res_dict = {}
     res_dict |= count_accuracy(B_true=true_B, B_est=estimated_B)
     res_dict |= eval_order(true_B, estimated_B)

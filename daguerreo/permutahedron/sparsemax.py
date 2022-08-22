@@ -53,6 +53,9 @@ def sparsemax_rank(x, max_k=100, prune_output=True):
     ranker = KBestRankings(x.to(device='cpu', dtype=torch.double), max_k)
     rankings, _ = ranker.compute(max_k)
 
+    #  todo (luca) if possble keep everything on the right device from the beginning
+    rankings = rankings.to(x.device)
+
     # recompute scores on clean autodiffable path from x
     scores = dot_perm(x, rankings)
     probas = sparsemax(scores)

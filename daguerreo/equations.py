@@ -59,8 +59,8 @@ class LARSAlgorithm(Equations):
         LR = LinearRegression(normalize=False, n_jobs=1)
         LL = LassoLarsIC(criterion="bic", normalize=False)
 
-        x_numpy = X.detach().numpy()
-        masks_numpy = dags.long().detach().numpy()
+        x_numpy = X.cpu().detach().numpy()
+        masks_numpy = dags.cpu().long().detach().numpy()
 
         self.W = np.zeros((len(masks_numpy), self.d, self.d))
 
@@ -79,7 +79,7 @@ class LARSAlgorithm(Equations):
 
             assert (self.W[m, mask == 0] == 0).all(), (self.W[m], mask)  # FIXME why this?
 
-        self.W = torch.from_numpy(self.W)
+        self.W = torch.from_numpy(self.W).to(X.device)
 
     @classmethod
     def initialize(cls, X, args, joint=False):
@@ -87,6 +87,7 @@ class LARSAlgorithm(Equations):
 
 
 class LARSDebiasedAlgorithm(LARSAlgorithm):
+# FIXME is this done??? do we want it???
 
 
     def fit(self, X, dags, dag_sparsifier=None, loss=None):
@@ -172,8 +173,8 @@ class ParametricGDFitting(Equations, ABC):
     def fit(self, X, complete_dags, dag_sparsifier, loss):
         super(ParametricGDFitting, self).fit(X, complete_dags, dag_sparsifier, loss)
         n_dags = len(complete_dags)
-        dag_sparsifier.init_parameters(n_dags)
-        self.init_parameters(n_dags)
+        dag_sparsifier.init_parameters(n_dags).to(X.device)
+        self.init_parameters(n_dags).to(X.device)
 
         inner_opt = self.optimizer(chain(self.parameters(), dag_sparsifier.parameters()))
 
@@ -186,6 +187,8 @@ class ParametricGDFitting(Equations, ABC):
             inner_objective = loss(x_hat, X, dim=(1, 2)) + sparsifier_reg + equations_reg
 
             inner_objective.sum().backward()
+            # TODO, record the inner objective here,
+            #  as we may want to check if we're getting anywhere close to convergence
             inner_opt.step()
 
     def regularizer(self):
@@ -224,6 +227,7 @@ class LinearEquations(ParametricGDFitting):
         # W[0]'s column c reconstructs node c
         # TODO [low priority] add bias, not needed atm
         self.W = _initialize_param(num_structures, self.d, self.d)
+        return self
 
     def _forward_impl(self, masked_X):
         # reconstruct the child from the parents, one per dag!
@@ -258,6 +262,7 @@ class NonlinearEquations(ParametricGDFitting):
 
         self.b1 = _initialize_param(num_structures, 1, self.d, self.hidden_units)
         self.W2 = _initialize_param(num_structures, self.d, self.hidden_units)
+        return self
 
     def _forward_impl(self, masked_X):
         # computes hidden layer, one per dag, per example, child node, hidden unit (4-d tensor)

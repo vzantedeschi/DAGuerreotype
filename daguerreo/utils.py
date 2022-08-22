@@ -165,3 +165,19 @@ def markov_equiv_class(dag: np.ndarray):
 
     return A
 
+
+def maybe_gpu(args, *obj):
+    """
+    Moves objects to cuda if it is enabled and available.
+
+
+    Args:
+        args: arguments namespace
+        *obj: any object that have the cuda() method.
+
+    Returns: a list of the same objects moved to cuda, if possible, otherwise returns the original objects
+
+    """
+    if args.gpu and torch.cuda.is_available():
+        return [o.cuda() for o in obj]
+    return obj
