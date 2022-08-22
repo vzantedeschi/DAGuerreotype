@@ -29,7 +29,7 @@ def run_seed(args, seed=0):
 
     _, dags = daguerro(X_torch, nll_ev, args)
 
-    estimated_B = dags[0].detach().numpy()
+    estimated_B = dags[0].detach().cpu().numpy()
 
     log_dict |= evaluate_binary(dag_B_torch.detach().numpy(), estimated_B)
 

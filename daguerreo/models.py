@@ -1,5 +1,4 @@
-from itertools import chain
-from typing import Type, Optional
+import wandb
 
 import torch
 from tqdm import tqdm
@@ -91,13 +90,12 @@ class DaguerroJoint(Daguerro):
 
             log_dict = {
                 "epoch": epoch,
-                # "number of orderings": num_orderings,
+                "number of orderings": len(alphas),
                 "objective": objective.item(),
-                # "expected loss": exp_loss.item(),
-                # "expected l0": exp_l0.item(),
             }
 
             # print(self.structure.theta)
+            wandb.log(log_dict)
 
         return log_dict
 
@@ -148,11 +146,10 @@ class DaguerroBilevel(Daguerro):
 
             log_dict = {
                 "epoch": epoch,
-                # "number of orderings": num_orderings,
-                "objective": final_inner_loss[0].item(),
-                # "expected loss": exp_loss.item(),
-                # "expected l0": exp_l0.item(),
+                "number of orderings": len(alphas),
+                "objective": objective.item(),
             }
+            wandb.log(log_dict)
 
             # some printing tbd
             # if epoch % 100 == 0:
