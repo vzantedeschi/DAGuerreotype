@@ -88,6 +88,7 @@ class LARSAlgorithm(Equations):
 
 class LARSDebiasedAlgorithm(LARSAlgorithm):
 # FIXME is this done??? do we want it???
+# it's not done!
 
 
     def fit(self, X, dags, dag_sparsifier=None, loss=None):
@@ -276,7 +277,7 @@ class NonlinearEquations(ParametricGDFitting):
 
 AVAILABLE = {
     'lars': LARSAlgorithm,
-    'larsdb': LARSDebiasedAlgorithm,
+    # 'larsdb': LARSDebiasedAlgorithm,
     'linear': LinearEquations,
     'nonlinear': NonlinearEquations,
 }

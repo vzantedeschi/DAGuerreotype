@@ -22,11 +22,13 @@ class MultiObjectiveHPO():
 
     def _suggest_params(self, trial, args):
 
-        args.pruning_reg = trial.suggest_loguniform("pruning_reg", 1e-6, 1e-1)
         args.l2_theta = trial.suggest_loguniform("l2_theta", 1e-6, 1e-1)
-        args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
         args.lr_theta = trial.suggest_loguniform("lr_theta", 1e-4, 1e-1)
-        args.lr = trial.suggest_loguniform("lr", 1e-4, 1e-1)
+
+        if args.equations != "lars":
+            args.lr = trial.suggest_loguniform("lr", 1e-4, 1e-1)
+            args.pruning_reg = trial.suggest_loguniform("pruning_reg", 1e-6, 1e-1)
+            args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
 
         if args.structure == "tk_sp_max":
             args.smax_max_k = int(trial.suggest_discrete_uniform("smax_max_k", 2, 20, q=2))
