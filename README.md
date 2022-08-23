@@ -29,7 +29,7 @@ python -m daguerreo.run_model --structure tk_sp_max --dataset synthetic
 ```
 Bilevel + LARS
 ```bash
-python -m daguerreo.run_model --equations lars --sparsifier none
+python -m daguerreo.run_model --equations lars --sparsifier none --nogpu
 ```
 
 evaluation pipeline to be finalized
