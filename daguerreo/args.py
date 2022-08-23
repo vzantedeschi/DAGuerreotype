@@ -19,10 +19,10 @@ def parse_default_data_gen_args(
     augmented_parser.add_argument("--project", type=str, default="default")
     augmented_parser.add_argument("--entity", type=str, default="daguerro")
     augmented_parser.add_argument(
-        "--gpu",
-        default=True,
+        "--nogpu",
+        default=False,
         action="store_true",
-        help="whether to use gpu if available",
+        help="whether not to use gpu even if available",
     )
     augmented_parser.add_argument(
         "--wandb",

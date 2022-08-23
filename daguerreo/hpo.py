@@ -6,14 +6,10 @@ import torch
 import wandb
 
 from copy import copy
-from pathlib import Path
 
 from .args import parse_tuning_args
-from .data.datasets import get_dataset
-from .evaluation import evaluate_binary
-from .models import Daguerro
-from .utils import (get_group_name, get_wandb_mode, init_project_path,
-                    init_seeds, log_graph, nll_ev)
+from .utils import get_group_name, get_wandb_mode, init_project_path
+from .run_model import run_seed
 
 class MultiObjectiveHPO():
 
@@ -52,7 +48,7 @@ class MultiObjectiveHPO():
         )
         
         log_dict = {}
-        for n, noise in enumerate(args.noise_models):
+        for noise in args.noise_models:
 
             print(f"Running with noise model \033[1m{noise}\033[0m")
             log_dict[noise] = {}
@@ -65,27 +61,11 @@ class MultiObjectiveHPO():
                 args.graph_type = graph
 
                 for seed in range(args.num_seeds):
-
-                    init_seeds(seed=seed)
-
-                    dag_B_torch, _, X_torch = get_dataset(
-                        args, to_torch=True, seed=seed + 1
-                    )
                     
                     try:
-                        daguerro = Daguerro.initialize(X_torch, args, args.joint)
-
-                        daguerro(X_torch, nll_ev, args)
-
-                        # todo EVAL part still needs to be done properly
-                        daguerro.eval()
-
-                        _, dags = daguerro(X_torch, nll_ev, args)
-
-                        estimated_B = dags[0].detach().numpy()
-
-                        log_dict[noise][graph].append(evaluate_binary(dag_B_torch.detach().numpy(), estimated_B))
-                    
+                        *_, seed_log_dict = run_seed(args, seed)
+                        log_dict[noise][graph].append(seed_log_dict)
+                        
                     except RuntimeError as e:
                         logging.error(e)
                         logging.info("Pruning current trial")
@@ -94,9 +74,11 @@ class MultiObjectiveHPO():
 
             log_dict[noise]["avg_shdc"] = np.mean([log_dict[noise][g][s]["shdc"] for g in args.graph_types for s in range(args.num_seeds)])
             log_dict[noise]["avg_sid"] = np.mean([log_dict[noise][g][s]["sid"] for g in args.graph_types for s in range(args.num_seeds)])
+            log_dict[noise]["avg_topc"] = np.mean([log_dict[noise][g][s]["topc"] for g in args.graph_types for s in range(args.num_seeds)])
 
         log_dict["avg_shdc"] = np.mean([log_dict[n]["avg_shdc"] for n in args.noise_models])
         log_dict["avg_sid"] = np.mean([log_dict[n]["avg_sid"] for n in args.noise_models])
+        log_dict["avg_topc"] = np.mean([log_dict[n]["avg_topc"] for n in args.noise_models])
 
         wandb.log(log_dict)
         wandb_run.finish()

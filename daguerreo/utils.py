@@ -178,6 +178,7 @@ def maybe_gpu(args, *obj):
     Returns: a list of the same objects moved to cuda, if possible, otherwise returns the original objects
 
     """
-    if args.gpu and torch.cuda.is_available():
+    if not args.nogpu and torch.cuda.is_available():
         return [o.cuda() for o in obj]
+        logging.info("Running on gpu")
     return obj
