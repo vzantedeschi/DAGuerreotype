@@ -27,7 +27,7 @@ Run with Sparsemax
 python -m daguerreo.run_model --structure tk_sp_max --joint --dataset synthetic
 python -m daguerreo.run_model --structure tk_sp_max --dataset synthetic
 ```
-Bilevel + LARS
+Bilevel + LARS (important: must set --sparsifier to none)
 ```bash
 python -m daguerreo.run_model --equations lars --sparsifier none --nogpu
 ```
@@ -45,14 +45,16 @@ evaluation pipeline to be finalized
 ### Code
 - ~~Top-K SparseMax~~
 - ~~remove temperature in spmax and max  @luca~~
+- Hard Concrete sparsifier @Luca
 - HPO pipeline @vale
   - tune on synthetic datasets (maybe from a distribution over synth datasets)
 - storing results outside wandb  @luca
-- metrics with Markov eqiv. classes !!!!!! @matt
+- ~~metrics with Markov eqiv. classes !!!!!! @matt~~
 - debiased LARS @vale
 - SID without R 
-- write a decent requirement for python packages
-  - write a script that installs everything needed!!!! :-o
+- ~~write a decent requirement for python packages~~
+  - ~~write a script that installs everything needed!!!! :-o~~
+  - write a better install script (e.g. checking python versions & torch, and accepting arguments)
 - check the bias issue! (no bias in linear & non-linear models) [low priority]
 - add interventional datasets @jean
 - refactor todos as seen in code @jean
@@ -68,6 +70,25 @@ evaluation pipeline to be finalized
 - bilvel vs joint (fair comparrison with same:(i) runtime! (ii) number of "seen" DAGS)
 
 ## Installation instructions
+
+[Update] New script `linux-install.sh` to install everything, assuming to be in an environment with python>=3.9 
+with dev packages installed. 
+
+Additional commands to install from scratch on ubuntu, including creating a DGE environment:
+
+```shell
+sudo apt install python3.9
+sudo apt install python3.9-venv
+sudo apt-get install python3.9-dev
+python3.9 -m venv ~/envs/DGE
+source ~/envs/DGE/bin/activate
+# install torch with gpu capability with cuda 11.6
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116  
+chmod +x linux-install.sh
+./linux-install.sh
+```
+
+---
 
 Get `python>=3.9`, on Mac `python=3.8` did not work.
 

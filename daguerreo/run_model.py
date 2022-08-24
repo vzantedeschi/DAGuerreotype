@@ -3,11 +3,11 @@ import wandb
 
 import numpy as np
 
-from daguerreo.args import parse_pipeline_args
-from daguerreo.data.datasets import get_dataset
-from daguerreo.evaluation import evaluate_binary
-from daguerreo.models import Daguerro
-from daguerreo.utils import (get_group_name, get_wandb_mode, init_project_path,
+from .args import parse_pipeline_args
+from .data.datasets import get_dataset
+from .evaluation import evaluate_binary
+from .models import Daguerro
+from .utils import (get_group_name, get_wandb_mode, init_project_path,
                     init_seeds, log_graph, nll_ev, maybe_gpu)
 
 
