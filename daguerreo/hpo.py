@@ -61,22 +61,27 @@ class MultiObjectiveHPO():
                 logging.info(f"graph type \033[1m{graph}\033[0m")
                 log_dict[noise][graph] = []
                 args.graph_type = graph
+                
+                for edge_num in args.edge_numbers:
 
-                for seed in range(args.num_seeds):
-                    
-                    try:
-                        *_, seed_log_dict = run_seed(args, seed)
-                        log_dict[noise][graph].append(seed_log_dict)
+                    args.s0 = edge_num
+
+                    for seed in range(args.num_seeds):
                         
-                    except RuntimeError as e:
-                        logging.error(e)
-                        logging.info("Pruning current trial")
+                        try:
+                            *_, seed_log_dict = run_seed(args, seed)
+                            log_dict[noise][graph].append(seed_log_dict)
+                            
+                        except RuntimeError as e:
+                            logging.error(e)
+                            logging.info("Pruning current trial")
 
-                        raise optuna.TrialPruned()
-
-            log_dict[noise]["avg_shdc"] = np.mean([log_dict[noise][g][s]["shdc"] for g in args.graph_types for s in range(args.num_seeds)])
-            log_dict[noise]["avg_sid"] = np.mean([log_dict[noise][g][s]["sid"] for g in args.graph_types for s in range(args.num_seeds)])
-            log_dict[noise]["avg_topc"] = np.mean([log_dict[noise][g][s]["topc"] for g in args.graph_types for s in range(args.num_seeds)])
+                            raise optuna.TrialPruned()
+            
+            noise_logs = [e for l in log_dict[noise].values() for e in l]
+            log_dict[noise]["avg_shdc"] = np.mean([e["shdc"] for e in noise_logs])
+            log_dict[noise]["avg_sid"] = np.mean([e["sid"] for e in noise_logs])
+            log_dict[noise]["avg_topc"] = np.mean([e["topc"] for e in noise_logs])
 
         log_dict["avg_shdc"] = np.mean([log_dict[n]["avg_shdc"] for n in args.noise_models])
         log_dict["avg_sid"] = np.mean([log_dict[n]["avg_sid"] for n in args.noise_models])

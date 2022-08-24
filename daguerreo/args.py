@@ -238,6 +238,7 @@ def parse_tuning_args() -> argparse.ArgumentParser:
                 "uniform",
             ], help="noise models to be tested")
     argparser.add_argument("--graph_types", type=list, default=["ER", "SF", "BP"], help="graph types to be tested")
+    argparser.add_argument("--edge_numbers", type=list, default=[2, 4], help="number of expected edges to be tested")
 
     _, argparser = parse_default_data_gen_args(argparser=argparser)
     _, argparser = parse_default_model_args(argparser=argparser)
