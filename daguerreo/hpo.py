@@ -62,9 +62,9 @@ class MultiObjectiveHPO():
                 log_dict[noise][graph] = []
                 args.graph_type = graph
                 
-                for edge_num in args.edge_numbers:
+                for edge_ratio in args.edge_ratios:
 
-                    args.s0 = edge_num
+                    args.s0 = int(edge_ratio * args.num_nodes)
 
                     for seed in range(args.num_seeds):
                         
