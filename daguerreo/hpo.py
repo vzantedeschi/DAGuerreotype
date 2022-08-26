@@ -31,7 +31,7 @@ class MultiObjectiveHPO():
             args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
 
         if args.structure == "tk_sp_max":
-            args.smax_max_k = int(trial.suggest_discrete_uniform("smax_max_k", 2, 20, q=2))
+            args.smax_max_k = int(trial.suggest_categorical("smax_max_k", [2, 10, 20, 50, 100]))
 
     def __call__(self, trial):
 

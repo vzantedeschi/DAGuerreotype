@@ -57,7 +57,7 @@ def simulate_dag(d: int, s0: int, graph_type: str) -> np.ndarray:
         )
         B = _graph_to_adjmat(G)
     else:
-        raise ValueError("unknown graph type")
+        raise ValueError("unknown graph type:", graph_type)
     B_perm = _random_permutation(B)
     assert ig.Graph.Adjacency(B_perm.tolist()).is_dag()
     return B_perm
@@ -123,7 +123,7 @@ def simulate_linear_sem(
         elif sem_type == "poisson":
             x = np.random.poisson(np.exp(X @ w)) * 1.0
         else:
-            raise ValueError("unknown sem type")
+            raise ValueError("unknown sem type:", sem_type)
         return x
 
     d = W.shape[0]
