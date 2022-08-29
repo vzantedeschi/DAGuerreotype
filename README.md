@@ -56,8 +56,8 @@ evaluation pipeline to be finalized
   - ~~write a script that installs everything needed!!!! :-o~~
   - write a better install script (e.g. checking python versions & torch, and accepting arguments)
 - check the bias issue! (no bias in linear & non-linear models) [low priority]
-- add interventional datasets @jean
-- refactor todos as seen in code @jean
+- ~~add interventional datasets @jean~~
+- ~~refactor todos as seen in code @jean~~
 - etc....
 
 ### Experiments
