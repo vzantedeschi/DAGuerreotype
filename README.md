@@ -46,8 +46,8 @@ evaluation pipeline to be finalized
 - ~~Top-K SparseMax~~
 - ~~remove temperature in spmax and max  @luca~~
 - Hard Concrete sparsifier @Luca
-- HPO pipeline @vale
-  - tune on synthetic datasets (maybe from a distribution over synth datasets)
+- ~~HPO pipeline @vale~~
+  - ~~tune on synthetic datasets (maybe from a distribution over synth datasets)~~
 - storing results outside wandb  @luca
 - ~~metrics with Markov eqiv. classes !!!!!! @matt~~
 - debiased LARS @vale
