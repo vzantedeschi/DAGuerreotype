@@ -1,3 +1,4 @@
+import logging
 import math
 import warnings
 from abc import ABC
@@ -145,13 +146,14 @@ def masked_x(X, dags):
 
 class ParametricGDFitting(Equations, ABC):
 
-    def __init__(self, d, num_structures, l2_reg_strength, optimizer, n_iters) -> None:
+    def __init__(self, d, num_structures, l2_reg_strength, optimizer, n_iters, convergence_checker=None) -> None:
         super().__init__()
         self.l2_reg_strength = l2_reg_strength
         self.d = d
         self.num_structures = num_structures
         self.optimizer = optimizer
         self.n_iters = n_iters
+        self.convergence_checker = convergence_checker
         if self.num_structures: self.init_parameters(self.num_structures)
 
     def init_parameters(self, num_structures):
@@ -168,7 +170,8 @@ class ParametricGDFitting(Equations, ABC):
             # note that the equations' optimizer parameters are different from those of the structure
             'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name=args.eq_optimizer, lr=args.lr),
             'n_iters': args.num_inner_iters,
-            'l2_reg_strength': args.l2_eq
+            'l2_reg_strength': args.l2_eq,
+            'convergence_checker': utils.ApproximateConvergenceChecker(args.es_tol_inner, args.es_delta_inner)
         }
 
     def fit(self, X, complete_dags, dag_sparsifier, loss):
@@ -178,6 +181,7 @@ class ParametricGDFitting(Equations, ABC):
         self.init_parameters(n_dags).to(X.device)
 
         inner_opt = self.optimizer(chain(self.parameters(), dag_sparsifier.parameters()))
+        if self.convergence_checker: self.convergence_checker.reset()
 
         for inner_iters in range(self.n_iters):
             inner_opt.zero_grad()
@@ -186,11 +190,16 @@ class ParametricGDFitting(Equations, ABC):
             x_hat, dags, equations_reg = self(X, dags)
 
             inner_objective = loss(x_hat, X, dim=(1, 2)) + sparsifier_reg + equations_reg
+            inner_objective = inner_objective.sum()
 
-            inner_objective.sum().backward()
+            inner_objective.backward()
             # TODO, record the inner objective here,
             #  as we may want to check if we're getting anywhere close to convergence
             inner_opt.step()
+            if self.convergence_checker:
+                if self.convergence_checker(inner_objective):
+                    logging.info(f'Inner obj. approx conv. at epoch {inner_iters}')
+                    break
 
     def regularizer(self):
         """
@@ -219,9 +228,9 @@ def _initialize_param(*shape, initializer=torch.zeros):
 
 class LinearEquations(ParametricGDFitting):
 
-    def __init__(self, d, num_structures, l2_reg_strength, optimizer, n_iters) -> None:
+    def __init__(self, d, num_structures, l2_reg_strength, optimizer, n_iters, convergence_checker=None) -> None:
         self.W = None
-        super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters)
+        super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters, convergence_checker)
 
     def init_parameters(self, num_structures):
         # W[:, p, c] one weight from parent p to child c
@@ -241,14 +250,14 @@ class NonlinearEquations(ParametricGDFitting):
     """
 
     def __init__(self, d, num_structures, l2_reg_strength, optimizer, n_iters,
-                 hidden_units, activation=torch.nn.functional.leaky_relu) -> None:
+                 hidden_units, activation=torch.nn.functional.leaky_relu, convergence_checker=None) -> None:
         self.hidden_units = hidden_units
         self.activation = activation
         self.W1 = None
         self.b1 = None
         self.W2 = None
         # todo add bias [low priority] see liner eq
-        super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters)
+        super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters, convergence_checker)
 
     @classmethod
     def _hps_from_args(cls, args):

@@ -154,6 +154,12 @@ def parse_default_model_args(
     )
     parser.add_argument("--lr", type=float, default=1e-1)
 
+    parser.add_argument('--es_tol', type=int, default=100)
+    parser.add_argument('--es_delta', type=float, default=1.e-4)
+
+    parser.add_argument('--es_tol_inner', type=int, default=10)
+    parser.add_argument('--es_delta_inner', type=float, default=1.e-4)
+
     parser.add_argument(
         "--device",
         type=str,
@@ -177,8 +183,8 @@ def parse_default_model_args(
         help="l2 penalty over all models weights (not graph)",
     )
 
-    parser.add_argument("--num_epochs", type=int, default=1000)
-    parser.add_argument("--num_inner_iters", type=int, default=100)
+    parser.add_argument("--num_epochs", type=int, default=5000)
+    parser.add_argument("--num_inner_iters", type=int, default=200)
 
     argparser.add_argument(
         "--nev",

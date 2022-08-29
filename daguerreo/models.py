@@ -1,3 +1,5 @@
+import logging
+
 import wandb
 
 import torch
@@ -61,6 +63,7 @@ class DaguerroJoint(Daguerro):
         log_dict = {}
 
         optimizer = get_optimizer(self.parameters(), name=args.optimizer, lr=args.lr)
+        convergence_checker = utils.ApproximateConvergenceChecker(args.es_tol, args.es_delta)
 
         pbar = tqdm(range(args.num_epochs))
 
@@ -96,6 +99,9 @@ class DaguerroJoint(Daguerro):
 
             # print(self.structure.theta)
             wandb.log(log_dict)
+            if convergence_checker(objective):
+                logging.info(f'Objective approx convergence at epoch {epoch}')
+                break
 
         return log_dict
 
@@ -106,6 +112,7 @@ class DaguerroBilevel(Daguerro):
         log_dict = {}
 
         optimizer = get_optimizer(self.structure.parameters(), name=args.optimizer, lr=args.lr_theta)
+        convergence_checker = utils.ApproximateConvergenceChecker(args.es_tol, args.es_delta)
 
         pbar = tqdm(range(args.num_epochs))
 
@@ -150,6 +157,10 @@ class DaguerroBilevel(Daguerro):
                 "objective": objective.item(),
             }
             wandb.log(log_dict)
+
+            if convergence_checker(objective):
+                logging.info(f'Outer obj. approx convergence at epoch {epoch}')
+                break
 
             # some printing tbd
             # if epoch % 100 == 0:
