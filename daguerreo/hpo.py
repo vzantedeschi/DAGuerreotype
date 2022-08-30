@@ -31,6 +31,9 @@ class MultiObjectiveHPO():
             args.lr = trial.suggest_loguniform("lr", 1e-4, 1e-1)
             args.pruning_reg = trial.suggest_loguniform("pruning_reg", 1e-6, 1e-1)
             args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
+        
+        if args.equations == "nonlinear":
+            args.hidden = trial.suggest_categorical("hidden", [10, 20, 50, 100])
 
         if args.structure == "tk_sp_max":
             args.smax_max_k = trial.suggest_categorical("smax_max_k", [2, 10, 20, 50, 100])

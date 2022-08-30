@@ -78,8 +78,6 @@ class LARSAlgorithm(Equations):
                     LL.fit(x_numpy[:, covariates] * weight, x_numpy[:, target].ravel())
                     self.W[m, covariates, target] = LL.coef_ * weight
 
-            assert (self.W[m, mask == 0] == 0).all(), (self.W[m], mask)  # FIXME why this?
-
         self.W = torch.from_numpy(self.W).to(X.device)
 
     @classmethod

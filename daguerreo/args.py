@@ -236,17 +236,27 @@ def parse_tuning_args() -> argparse.ArgumentParser:
     argparser.add_argument("--num_seeds", type=int, default=3,
                            help="number of seeds/datasets per trial (seed results are averaged)")
     argparser.add_argument("--num_trials", type=int, default=10, help="number of sets of hp to be tested")
-    argparser.add_argument("--noise_models", type=list, default=[
-                "gauss",
-                "gauss-heter",
-                "exp",
-                "gumbel",
-                "uniform",
-            ], help="noise models to be tested")
+
     argparser.add_argument("--graph_types", type=list, default=["ER", "SF", "BP"], help="graph types to be tested")
     argparser.add_argument("--edge_ratios", type=list, default=[2, 4], help="number of expected edges per node to be tested")
 
     _, argparser = parse_default_data_gen_args(argparser=argparser)
-    _, argparser = parse_default_model_args(argparser=argparser)
+    args, argparser = parse_default_model_args(argparser=argparser)
+
+    if args.equations == "nonlinear":
+        argparser.add_argument("--noise_models", type=list, default=[
+            "mlp",
+            "gp",
+            "gp-add",
+            "mim",
+        ], help="noise models to be tested")
+    else:
+        argparser.add_argument("--noise_models", type=list, default=[
+            "gauss",
+            "gauss-heter",
+            "exp",
+            "gumbel",
+            "uniform",
+        ], help="noise models to be tested")
 
     return argparser
