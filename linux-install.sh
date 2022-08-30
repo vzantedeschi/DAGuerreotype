@@ -20,3 +20,17 @@ cd ..
 # wget --no-check-certificate --content-disposition https://cran.r-project.org/src/contrib/Archive/SID/SID_1.0.tar.gz
 cd dag-learning
 python setup.py build_ext --inplace
+# install R and libraries to compute SID
+sudo apt-get update &&
+sudo apt-get install -y software-properties-common &&
+sudo rm -rf /var/lib/apt/lists/*
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 &&
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 51716619E084DAB9 &&
+sudo add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/'
+sudo apt-get update -y --fix-missing &&
+sudo apt-get install -y --no-install-recommends r-base &&
+sudo apt-get clean -y
+Rscript -e 'install.packages("BiocManager")' &&
+Rscript -e 'BiocManager::install(c("RBGL", "igraph", "graph"))' &&
+Rscript -e 'install.packages("https://cran.r-project.org/src/contrib/Archive/fastICA/fastICA_1.2-2.tar.gz", repos=NULL, type="source")' &&
+Rscript -e 'BiocManager::install(c("pcalg", "SID"))'
