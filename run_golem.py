@@ -84,8 +84,8 @@ def run(args, wandb_mode):
         log_dict["avg_sid"] = np.mean([log_dict[n]["avg_sid"] for n in args.noise_models])
         log_dict["avg_topc"] = np.mean([log_dict[n]["avg_topc"] for n in args.noise_models])
 
-    wandb.log(log_dict)
-    wandb_run.finish()
+        wandb.log(log_dict)
+        wandb_run.finish()
 
 if __name__ == "__main__":
 
