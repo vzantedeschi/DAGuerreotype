@@ -162,6 +162,20 @@ def markov_equiv_class(dag: np.ndarray):
 
     return A
 
+def greedy_dag(G: np.ndarray):
+    G_nx = nx.from_numpy_array(G, create_using=nx.DiGraph)
+
+    sorted_edges = sorted(G_nx.edges(data=True), key=lambda t: t[2].get("weight", 0.0))
+
+    while not nx.is_directed_acyclic_graph(G_nx):
+
+        (u, v, w) = sorted_edges.pop(0)
+
+        if nx.has_path(G_nx, v, u):  # then a cycle exists, try to remove it
+            G_nx.remove_edge(u, v)
+
+    return nx.adjacency_matrix(G_nx).todense()
+
 def maybe_gpu(args, *obj):
     """
     Moves objects to cuda if it is enabled and available.

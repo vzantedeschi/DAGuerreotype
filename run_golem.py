@@ -7,7 +7,7 @@ from baselines.golem import golem
 from daguerreo.args import parse_tuning_args
 from daguerreo.data.datasets import get_dataset
 from daguerreo.evaluation import evaluate_binary
-from daguerreo.utils import get_group_name, get_wandb_mode, init_project_path, init_seeds, log_graph
+from daguerreo.utils import get_group_name, get_wandb_mode, init_project_path, init_seeds, greedy_dag
 
 def run_seed(seed=0, eq_var=True):
 
@@ -31,6 +31,8 @@ def run_seed(seed=0, eq_var=True):
         B_init=None,
         interventional_data=None,
     )
+
+    estimated_B = greedy_dag(estimated_B) # force solution to be a DAG
 
     log_dict = evaluate_binary(dag_B, estimated_B)
 
