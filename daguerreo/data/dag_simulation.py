@@ -28,6 +28,8 @@ def simulate_dag(d: int, s0: int, graph_type: str) -> np.ndarray:
         B (np.ndarray): [d, d] binary adj matrix of DAG
     """
 
+    s0 = min(d * (d-1) // 2, s0)
+    
     def _random_permutation(M):
         # np.random.permutation permutes first axis only
         P = np.random.permutation(np.eye(M.shape[0]))

@@ -58,7 +58,7 @@ evaluation pipeline to be finalized
 - check the bias issue! (no bias in linear & non-linear models) [low priority]
 - ~~add interventional datasets @jean~~
 - ~~refactor todos as seen in code @jean~~
-- etc....
+- move data outside daguerreo module @vale
 
 ### Experiments
 

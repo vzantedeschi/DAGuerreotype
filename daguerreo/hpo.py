@@ -23,7 +23,9 @@ class MultiObjectiveHPO():
     def _suggest_params(self, trial, args):
 
         args.l2_theta = trial.suggest_loguniform("l2_theta", 1e-6, 1e-1)
-        args.lr_theta = trial.suggest_loguniform("lr_theta", 1e-4, 1e-1)
+
+        if not args.joint:
+            args.lr_theta = trial.suggest_loguniform("lr_theta", 1e-4, 1e-1)
 
         if args.equations != "lars":
             args.lr = trial.suggest_loguniform("lr", 1e-4, 1e-1)
@@ -31,7 +33,7 @@ class MultiObjectiveHPO():
             args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
 
         if args.structure == "tk_sp_max":
-            args.smax_max_k = int(trial.suggest_categorical("smax_max_k", [2, 10, 20, 50, 100]))
+            args.smax_max_k = trial.suggest_categorical("smax_max_k", [2, 10, 20, 50, 100])
 
     def __call__(self, trial):
 
