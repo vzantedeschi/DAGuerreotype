@@ -13,7 +13,7 @@ def run_seed(seed=0, eq_var=True):
 
     init_seeds(seed=seed)
 
-    dag_B, dag_W, X = get_dataset(
+    dag_B, _, X = get_dataset(
         args, to_torch=False, seed=seed + 1
     )
 
