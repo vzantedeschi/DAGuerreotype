@@ -178,3 +178,24 @@ def maybe_gpu(args, *obj):
         return [o.cuda() for o in obj]
         logging.info("Running on gpu")
     return obj
+
+
+class ApproximateConvergenceChecker():
+    def __init__(self, tolerance, min_delta=1.e-4):
+        self.tolerance = tolerance
+        self.min_delta = min_delta
+        self.reset()
+
+    def reset(self):
+        self.counter = 0
+        self.min_prev_loss = torch.inf
+
+    def __call__(self, loss):
+        diff_loss = loss - self.min_prev_loss
+        if diff_loss < - self.min_delta:
+            self.counter = 0
+            self.min_prev_loss = loss.item()
+        else: self.counter += 1
+        if self.counter > self.tolerance:
+            return True
+        else: return False

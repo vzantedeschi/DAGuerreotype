@@ -46,8 +46,8 @@ evaluation pipeline to be finalized
 - ~~Top-K SparseMax~~
 - ~~remove temperature in spmax and max  @luca~~
 - Hard Concrete sparsifier @Luca
-- HPO pipeline @vale
-  - tune on synthetic datasets (maybe from a distribution over synth datasets)
+- ~~HPO pipeline @vale~~
+  - ~~tune on synthetic datasets (maybe from a distribution over synth datasets)~~
 - storing results outside wandb  @luca
 - ~~metrics with Markov eqiv. classes !!!!!! @matt~~
 - debiased LARS @vale
@@ -56,8 +56,8 @@ evaluation pipeline to be finalized
   - ~~write a script that installs everything needed!!!! :-o~~
   - write a better install script (e.g. checking python versions & torch, and accepting arguments)
 - check the bias issue! (no bias in linear & non-linear models) [low priority]
-- add interventional datasets @jean
-- refactor todos as seen in code @jean
+- ~~add interventional datasets @jean~~
+- ~~refactor todos as seen in code @jean~~
 - etc....
 
 ### Experiments
