@@ -1,7 +1,10 @@
+import math
 import typing
 from abc import ABC
 
 import torch
+from torch.autograd import Variable
+from torch.nn import functional as F
 
 
 class Sparsifier(torch.nn.Module):
@@ -152,8 +155,7 @@ class BernoulliSTEL0Sparsifier(_L0Sparsifier):
     def init_parameters(self, num_structures):
         self.op = BernoulliSTEOp((num_structures, self.d, self.d))
         self.pi = torch.nn.Parameter(
-            0.5 * torch.ones((num_structures, self.d, self.d)),
-            requires_grad=True
+            0.5 * torch.ones((num_structures, self.d, self.d))
         )
         return self
 
@@ -167,9 +169,96 @@ class BernoulliSTEL0Sparsifier(_L0Sparsifier):
         return complete_dags*z, self.regularizer(complete_dags)
 
 
+class HardConcreteRV:
+
+    def __init__(self, shape, epsilon=1e-6, limit_a=-0.1, limit_b=1.1, temperature=2./3.):
+        self.temperature = temperature
+        self.shape = shape
+        self.epsilon = epsilon
+        self.limit_a = limit_a
+        self.limit_b = limit_b
+
+    def get_eps(self, size, device=None):
+        """Uniform random numbers for the concrete distribution"""
+        eps = torch.nn.init.uniform_(torch.empty(size, device=device), self.epsilon, 1 - self.epsilon)
+        eps = Variable(eps)
+        return eps
+
+    # in the functions below, theta is the log alpha in the paper
+
+    def cdf_qz(self, x, theta):
+        """Implements the CDF of the 'stretched' concrete distribution"""
+        # didn't fully understan this... see bewlow
+        xn = (x - self.limit_a) / (self.limit_b - self.limit_a)
+        logits = math.log(xn) - math.log(1 - xn)
+
+        # from the paper, this computed in 0 should be  [a = self.limit_a, b = self.limit_b]
+        # sigmoid(theta - temperature * (log( - a) - log(b) )
+        # see eq 12
+        #
+        # if x = 0 then xn = - a / (b - a)
+        # logits = log( -a ) - log( b-a) - log ( b) + log(b -a) = log(-a) - log(b)
+        # so... it looks like there's the opposite sing in the expression below..
+        # shouldn't it be  theta - logists * temp ?? (according to the paper?)
+
+        # aanyway... it seems numerically correct, in the sense that it decreases
+        # as theta -> - infinity
+        return torch.sigmoid(logits * self.temperature - theta)  #.clamp(min=self.epsilon, max=1 - self.epsilon)
+
+    def quantile_concrete(self, theta, eps):
+        """Implements the quantile, aka inverse CDF, of the 'stretched' concrete distribution"""
+        y = torch.sigmoid((torch.log(eps) - torch.log(1 - eps) + theta) / self.temperature)
+        return y * (self.limit_b - self.limit_a) + self.limit_a
+
+    def sample(self, theta):
+        """
+        Draws one sample of the rv with parameter theta
+
+        :param theta: the success parameter
+        :return: a sample
+        """
+        eps = self.get_eps(self.shape, device=theta.device)
+        z = self.quantile_concrete(theta, eps)
+        return F.hardtanh(z, min_val=0, max_val=1)
+
+    def map(self, theta):
+        pi = torch.sigmoid(theta)
+        return F.hardtanh(pi * (self.limit_b - self.limit_a) + self.limit_a, min_val=0, max_val=1)
+
+    @property
+    def ndim(self):
+        """
+        :return: dimensionality of this rv
+        """
+        return len(self.shape)
+
+
 class HardConcreteL0Sparsifier(_L0Sparsifier):
-    # TODO
-    pass
+
+    def __init__(self, l2_reg_strength, d, num_structures=None) -> None:
+        self.rv = None
+        super().__init__(l2_reg_strength, d, num_structures)
+
+    def init_parameters(self, num_structures):
+        shape = (num_structures, self.d, self.d)
+        self.pi = torch.nn.Parameter(torch.empty(shape))
+        self.pi.data.normal_(0., 1e-2)
+        self.rv = HardConcreteRV(shape)
+
+        return self
+
+    def forward(self, complete_dags):
+        # self.pi.data.clamp_(min=math.log(1e-2), max=math.log(1e2))
+
+        op = self.rv.sample if self.training else self.rv.map
+        z = op(self.pi)
+
+        return complete_dags*z, self.regularizer(complete_dags)
+
+    def regularizer(self, complete_dag):
+        # logpw_col = torch.sum(- (.5 * self.prior_prec * self.weights.pow(2)) - self.lamba, 1)
+        return self.l2_reg_strength * torch.sum((1 - self.rv.cdf_qz(0, self.pi)) * complete_dag)
+        # return super().regularizer(complete_dag)
 
 
 class L1Sparsifier(Sparsifier):
