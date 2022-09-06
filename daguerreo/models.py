@@ -77,7 +77,7 @@ class DaguerroJoint(Daguerro):
             dags, sparsifier_reg = self.sparsifier(complete_dags)
             x_hat, dags, equations_reg = self.equation(X, dags)
 
-            rec_loss = loss(x_hat, X, dim=(-2, -1))
+            rec_loss = loss(x_hat, X)
 
             #  here we weight also the regularizers by the alphas, can discuss about this...
             #  but I think this is correct. The structure regularizer is instead unweighted as it is a global one

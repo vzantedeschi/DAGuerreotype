@@ -187,7 +187,7 @@ class ParametricGDFitting(Equations, ABC):
             dags, sparsifier_reg = dag_sparsifier(complete_dags)
             x_hat, dags, equations_reg = self(X, dags)
 
-            inner_objective = loss(x_hat, X, dim=(1, 2)) + sparsifier_reg + equations_reg
+            inner_objective = loss(x_hat, X) + sparsifier_reg + equations_reg
             inner_objective = inner_objective.sum()
 
             inner_objective.backward()

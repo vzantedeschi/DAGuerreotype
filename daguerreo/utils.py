@@ -79,6 +79,21 @@ def nll_ev(output, target, dim=(-2, -1)):
     result = torch.log(loss) * target.shape[-1] / 2
     return result
 
+def squared_loss(output, target, avg_dim=(-2), sum_dim=(-1)):
+    "variable-wise squared loss"
+
+    loss = (output - target).square()
+    loss = loss.mean(dim=avg_dim) / 2
+
+    result = loss.sum(dim=sum_dim)
+    return result
+
+AVAILABLE = {
+    'nll_ev': nll_ev,
+    'sq': squared_loss,
+}
+
+DEFAULT = 'nll_ev'
 
 # -------------------------------------------------------- DAG UTILS
 

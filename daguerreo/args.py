@@ -4,6 +4,7 @@ from typing import Tuple
 from . import sparsifiers
 from . import structures
 from . import equations
+from . import utils
 
 # todo cleanup args
 
@@ -130,6 +131,8 @@ def parse_default_model_args(
     _add_from_module('--sparsifier', sparsifiers)
 
     _add_from_module('--equations', equations)
+
+    _add_from_module('--loss', utils)
 
     # -------------------------------------------------- MLP --------------------------------------------------
 

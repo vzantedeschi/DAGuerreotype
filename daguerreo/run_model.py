@@ -7,27 +7,26 @@ from .args import parse_pipeline_args
 from .data.datasets import get_dataset
 from .evaluation import evaluate_binary
 from .models import Daguerro
-from .utils import (get_group_name, get_wandb_mode, init_project_path,
-                    init_seeds, log_graph, nll_ev, maybe_gpu)
+from . import utils
 
 
 def run_seed(args, seed=0):
 
-    init_seeds(seed=seed)
+    utils.init_seeds(seed=seed)
 
     dag_B_torch, dag_W_torch, X_torch = get_dataset(
         args, to_torch=True, seed=seed + 1
     )
 
     daguerro = Daguerro.initialize(X_torch, args, args.joint)
-    daguerro, X_torch = maybe_gpu(args, daguerro, X_torch)
+    daguerro, X_torch = utils.maybe_gpu(args, daguerro, X_torch)
 
-    log_dict = daguerro(X_torch, nll_ev, args)
+    log_dict = daguerro(X_torch, utils.AVAILABLE[args.loss], args)
 
     # todo EVAL part still needs to be done properly
     daguerro.eval()
 
-    _, dags = daguerro(X_torch, nll_ev, args)
+    _, dags = daguerro(X_torch, utils.AVAILABLE[args.loss], args)
 
     estimated_B = dags[0].detach().cpu().numpy()
 
@@ -38,7 +37,7 @@ def run_seed(args, seed=0):
 def run(args, wandb_mode, save_dir):
     
     config = vars(args)
-    group = get_group_name(args)
+    group = utils.get_group_name(args)
 
     for seed in range(args.num_seeds):
 
@@ -67,8 +66,8 @@ def run(args, wandb_mode, save_dir):
         
         true_W, estimated_B, log_dict = run_seed(args, seed)
 
-        log_graph(true_W, "True")
-        log_graph(estimated_B, "learned")
+        utils.log_graph(true_W, "True")
+        utils.log_graph(estimated_B, "learned")
 
         wandb.log(log_dict)
         wandb_run.finish()
@@ -84,6 +83,6 @@ if __name__ == "__main__":
     argparser = parse_pipeline_args()
     the_args = argparser.parse_args()
 
-    wandb_md = get_wandb_mode(the_args)
-    sv_dir = init_project_path(args=the_args)
+    wandb_md = utils.get_wandb_mode(the_args)
+    sv_dir = utils.init_project_path(args=the_args)
     run(the_args, wandb_md, sv_dir)
