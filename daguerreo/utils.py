@@ -12,6 +12,7 @@ from pathlib import Path
 
 import causaldag as cd
 
+
 def get_wandb_mode(args):
     if not args.wandb:
         logging.getLogger().setLevel(logging.INFO)
@@ -20,6 +21,7 @@ def get_wandb_mode(args):
         logging.getLogger().setLevel(logging.WARNING)
         wandb_mode = None
     return wandb_mode
+
 
 def get_group_name(args, log_graph_sem=True):
     # experiment naming
@@ -33,6 +35,7 @@ def get_group_name(args, log_graph_sem=True):
     except:
         group_name += f"-{args.dataset}"  # for real data
     return group_name
+
 
 def init_project_path(args):
     project = f"{args.project}"
@@ -79,7 +82,8 @@ def nll_ev(output, target, dim=(-2, -1)):
     result = torch.log(loss) * target.shape[-1] / 2
     return result
 
-def squared_loss(output, target, avg_dim=(-2), sum_dim=(-1)):
+
+def squared_loss(output, target, avg_dim=(-2,), sum_dim=(-1,)):
     "variable-wise squared loss"
 
     loss = (output - target).square()
@@ -87,6 +91,7 @@ def squared_loss(output, target, avg_dim=(-2), sum_dim=(-1)):
 
     result = loss.sum(dim=sum_dim)
     return result
+
 
 AVAILABLE = {
     'nll_ev': nll_ev,
@@ -112,7 +117,7 @@ def get_topological_rank(graph: np.array) -> np.array:
     return rank
 
 
-def plot_DAG(graph: np.ndarray, name: str) -> None:
+def plot_DAG(graph: np.ndarray, name: str) -> bool:
 
     G_nx = nx.from_numpy_array(graph, create_using=nx.DiGraph)
     colors = [0.0] * len(graph)
@@ -150,7 +155,7 @@ def plot_DAG(graph: np.ndarray, name: str) -> None:
     return a_dag
 
 
-def log_graph(dag_G: np.ndarray, name: str) -> None:
+def log_graph(dag_G: np.ndarray, name: str) -> bool:
     a_dag = plot_DAG(dag_G, name)
     wandb.log({f"{name}_graph": dag_G})
 
@@ -204,8 +209,8 @@ def maybe_gpu(args, *obj):
 
     """
     if not args.nogpu and torch.cuda.is_available():
-        return [o.cuda() for o in obj]
         logging.info("Running on gpu")
+        return [o.cuda() for o in obj]
     return obj
 
 
