@@ -1,4 +1,5 @@
 import logging
+from copy import copy
 
 import wandb
 
@@ -49,8 +50,24 @@ class Daguerro(torch.nn.Module):
     def _learn(self, X, loss, args): raise NotImplementedError()
 
     def _eval(self, X, loss, args):
-        # FIXME put something meaningful here, i.e. fitting the mode, if we want to go that way...
         alphas, complete_dags, structure_reg = self.structure()
+
+        logging.info(f'Fitting the mode. We have {len(complete_dags)} complete dags!')
+
+        # -- increase the fitting time (TODO make this passage a bit more decent)
+        ex_args = copy(args)
+        ex_args.num_inner_iters *= 5
+        ex_args.es_tol_inner *= 5
+
+        self.equation = self.equation.initialize(X, ex_args)
+        self.sparsifier = self.sparsifier.initialize(X, ex_args)
+
+        self.equation.fit(X, complete_dags, self.sparsifier, loss)
+        logging.info('Done fitting the mode!')
+
+        self.sparsifier.eval()
+        self.equation.eval()
+
         dags, sparsifier_reg = self.sparsifier(complete_dags)
         x_hat, dags, equations_reg = self.equation(X, dags)
         return x_hat, dags
