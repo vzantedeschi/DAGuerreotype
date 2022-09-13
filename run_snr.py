@@ -9,7 +9,7 @@ from daguerreo.data.datasets import get_dataset
 from daguerreo.evaluation import evaluate_binary
 from daguerreo.utils import get_group_name, get_wandb_mode, init_project_path, init_seeds, log_graph
 
-def run_seed(seed=0):
+def run_seed(args, seed=0):
 
     init_seeds(seed=seed)
 
@@ -57,7 +57,7 @@ def run(args, wandb_mode):
 
                 for seed in range(args.num_seeds):
                     
-                    seed_log_dict = run_seed(seed)
+                    seed_log_dict = run_seed(args, seed)
                     log_dict[noise][graph].append(seed_log_dict)
         
         noise_logs = [e for l in log_dict[noise].values() for e in l]

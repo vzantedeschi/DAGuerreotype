@@ -9,7 +9,7 @@ from copy import copy
 
 from .args import parse_tuning_args
 from .utils import get_group_name, get_wandb_mode, init_project_path
-from .run_model import run_seed
+from .run_model import run_daguerreo
 
 class MultiObjectiveHPO():
 
@@ -22,7 +22,7 @@ class MultiObjectiveHPO():
 
     def _suggest_params(self, trial, args):
 
-        args.l2_theta = trial.suggest_loguniform("l2_theta", 1e-6, 1e-1)
+        # args.l2_theta = trial.suggest_loguniform("l2_theta", 1e-6, 1e-1)
 
         if not args.joint:
             args.lr_theta = trial.suggest_loguniform("lr_theta", 1e-4, 1e-1)
@@ -30,7 +30,7 @@ class MultiObjectiveHPO():
         if args.equations != "lars":
             args.lr = trial.suggest_loguniform("lr", 1e-4, 1e-1)
             args.pruning_reg = trial.suggest_loguniform("pruning_reg", 1e-6, 1e-1)
-            args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
+            # args.l2_eq = trial.suggest_loguniform("l2_eq", 1e-6, 1e-1)
         
         if args.equations == "nonlinear":
             args.hidden = trial.suggest_categorical("hidden", [10, 20, 50, 100])
@@ -74,7 +74,7 @@ class MultiObjectiveHPO():
                     for seed in range(args.num_seeds):
                         
                         try:
-                            *_, seed_log_dict = run_seed(args, seed)
+                            *_, seed_log_dict = run_daguerreo(args, seed)
                             log_dict[noise][graph].append(seed_log_dict)
                             
                         except RuntimeError as e:

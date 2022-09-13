@@ -8,9 +8,23 @@ from .data.datasets import get_dataset
 from .evaluation import evaluate_binary
 from .models import Daguerro
 from . import utils
+from baselines.sortnregress import sortnregress
 
+def run_snr(args, seed=0):
 
-def run_seed(args, seed=0):
+    utils.init_seeds(seed=seed)
+
+    dag_B, dag_W, X = get_dataset(
+        args, to_torch=False, seed=seed + 1
+    )
+
+    estimated_B = sortnregress(X)
+
+    log_dict = evaluate_binary(dag_B, estimated_B)
+
+    return dag_W, estimated_B, log_dict
+
+def run_daguerreo(args, seed=0):
 
     utils.init_seeds(seed=seed)
 
@@ -64,7 +78,10 @@ def run(args, wandb_mode, save_dir):
             f" Data seed: {seed}, run Daguerro with {args.equations} and SMAP's initial theta = {args.smap_init_theta}"
         )
         
-        true_W, estimated_B, log_dict = run_seed(args, seed)
+        if args.model == "daguerreo":
+            true_W, estimated_B, log_dict = run_daguerreo(args, seed)
+        elif args.model == "snr":
+            true_W, estimated_B, log_dict = run_snr(args, seed)
 
         utils.log_graph(true_W, "True")
         utils.log_graph(estimated_B, "learned")

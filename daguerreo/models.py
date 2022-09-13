@@ -153,7 +153,7 @@ class DaguerroBilevel(Daguerro):
             x_hat, dags, equations_reg = self.equation(X, dags)
 
             # and now it's done :) don't think it's meaningfully to consider the (inner) regularizers here
-            final_inner_loss = loss(x_hat, X, dim=(1, 2))
+            final_inner_loss = loss(x_hat, X)
 
             # only final loss should count! to this, we just add the regularization from above
             objective = alphas @ final_inner_loss + structure_reg
