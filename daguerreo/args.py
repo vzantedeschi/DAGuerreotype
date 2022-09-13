@@ -110,6 +110,8 @@ def parse_default_model_args(
         argparser if argparser else argparse.ArgumentParser(description="Daguerreo")
     )
 
+    parser.add_argument("--model", default="daguerreo", choices=["daguerreo", "snr"])
+
     parser.add_argument(
         "--joint",
         default=False,
@@ -173,16 +175,16 @@ def parse_default_model_args(
     parser.add_argument(
         "--pruning_reg", type=float, default=0.001, help="pruning penalty over graph"
     )
-    parser.add_argument(  # use l2_reg instead
+    parser.add_argument(  
         "--l2_theta",
         type=float,
-        default=0.0,
+        default=0.0005,
         help="l2 penalty for the structure vector",
     )
-    parser.add_argument(  # use l2_reg instead
+    parser.add_argument(  
         "--l2_eq",
         type=float,
-        default=0.0,
+        default=0.0005,
         help="l2 penalty over all models weights (not graph)",
     )
 
