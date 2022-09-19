@@ -74,7 +74,13 @@ def get_optimizer(params: Iterable, name: str, lr: float) -> Optimizer:
 
 
 def nll_ev(output, target, dim=(-2, -1)):
-    "negative log likelihood for Daguerro with equal variance"
+    """
+    Negative log likelihood for Daguerro with equal variance.
+
+    By default, we're expecting both output and targets to be rank 3 tensors.
+    Where the first dimension run across different DAGS.
+
+    """
 
     loss = (output - target).square()
     loss = loss.sum(dim=dim)
