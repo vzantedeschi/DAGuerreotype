@@ -1,0 +1,17 @@
+cdt>=0.5.23
+wandb>=0.13.1
+optuna>=2.10.1
+typing>=3.7.4.3
+setuptools>=62.3.2
+Cython>=0.29.30
+torch>=1.12.0
+numpy>=1.23.1
+sklearn>=0.0
+scikit-learn>=1.1.1
+igraph>=0.9.11
+scipy>=1.8.1
+networkx>=2.8.4
+causaldag>=0.1a163
+matplotlib>=3.5.2
+tqdm>=4.64.0
+entmax>=1.0
