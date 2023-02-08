@@ -136,7 +136,7 @@ def parse_default_model_args(
     # -------------------------------------------------- MLP --------------------------------------------------
 
     parser.add_argument(
-        "--hidden", type=int, default=10, help="Dimension of hidden layers"
+        "--hidden", type=int, default=50, help="Dimension of hidden layers"
     )
 
     # -------------------------------------------------- Training ---------------------------------------------
@@ -204,7 +204,7 @@ def parse_default_model_args(
 
     # ------------------------------------------------ SparseMAX ------------------------------------------------
     
-    parser.add_argument('--smax_max_k', type=int, default=10)
+    parser.add_argument('--smax_max_k', type=int, default=100)
 
     args, _ = parser.parse_known_args()
     return args, parser
@@ -224,10 +224,10 @@ def parse_tuning_args() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser(description="Hyper-Parameter Tuning")
     argparser.add_argument("--num_seeds", type=int, default=3,
                            help="number of seeds/datasets per trial (seed results are averaged)")
-    argparser.add_argument("--num_trials", type=int, default=10, help="number of sets of hp to be tested")
+    argparser.add_argument("--num_trials", type=int, default=50, help="number of sets of hp to be tested")
 
     argparser.add_argument("--graph_types", type=list, default=["ER", "SF", "BP"], help="graph types to be tested")
-    argparser.add_argument("--edge_ratios", type=list, default=[2, 4], help="number of expected edges per node to be tested")
+    argparser.add_argument("--edge_ratios", type=list, default=[1, 2], help="number of expected edges per node to be tested")
 
     _, argparser = parse_default_data_gen_args(argparser=argparser)
     args, argparser = parse_default_model_args(argparser=argparser)

@@ -4,7 +4,9 @@ import numpy as np
 
 import causaldag as cd
 
-from cdt.metrics import SID, SHD_CPDAG
+from cdt.metrics import SID
+from sklearn.metrics import f1_score
+
 from .utils import get_topological_rank
 
 # -------------------------------------------------------------------------- METRICS
@@ -63,8 +65,10 @@ def count_accuracy(B_true: np.ndarray, B_est: np.ndarray) -> dict:
     
     B_cpdag_true = cd.DAG.from_amat(B_true).cpdag()
     B_cpdag_est = cd.DAG.from_amat(B_est).cpdag()
+
+    f1 = f1_score(B_true.flatten(), B_est.flatten())
     
-    return {"fdr": fdr, "tpr": tpr, "fpr": fpr, "shd": shd, "nnz": pred_size, "shdc": B_cpdag_true.shd(B_cpdag_est)}
+    return {"fdr": fdr, "tpr": tpr, "fpr": fpr, "shd": shd, "nnz": pred_size, "shdc": B_cpdag_true.shd(B_cpdag_est), "f1": f1}
 
 
 def topological_rank_corr(B_true: np.ndarray, B_est: np.ndarray) -> dict:
@@ -79,33 +83,10 @@ def topological_rank_corr(B_true: np.ndarray, B_est: np.ndarray) -> dict:
 
     return coeff
 
-# dtop metric from https://arxiv.org/abs/2203.04413
-def topological_order_divergence(B_true: np.ndarray, order_est: np.ndarray) -> dict:
-
-    d = len(B_true)
-
-    # get mask of edges that are not consistent with estimated ordering
-    M = np.tril(np.ones((d, d)), k=1)
-    mask = M[order_est[..., None], order_est[:, None]]
-
-    # count all true edges that are not consistent with estimated ordering
-    coeff = (B_true * mask).sum()
-
-    return coeff
-
-def eval_order(B_true: np.ndarray, B_est: np.ndarray, order_est: np.ndarray=None):
-
-    res = {"topc": topological_rank_corr(B_true, B_est)}
-
-    if order_est is not None:
-        res |= {"dtop": topological_order_divergence(B_true, order_est)}
-
-    return res
-
 # ------------------------------------------------------------------ DAG EVALUATION
 
 
-def evaluate_binary(true_B: np.array, estimated_B: np.array, estimated_order: np.array=None):
+def evaluate_binary(true_B: np.array, estimated_B: np.array):
     try:
         res_dict = {"sid": SID(true_B, estimated_B).item()}
     except FileNotFoundError:
@@ -113,6 +94,5 @@ def evaluate_binary(true_B: np.array, estimated_B: np.array, estimated_order: np
         res_dict = {"sid": None}
     # res_dict = {}
     res_dict |= count_accuracy(B_true=true_B, B_est=estimated_B)
-    res_dict |= eval_order(true_B, estimated_B)
 
     return res_dict

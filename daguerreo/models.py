@@ -6,7 +6,6 @@ import wandb
 import torch
 from tqdm import tqdm
 
-# from modules import Structure, Sparsifier, Equations
 from . import equations
 from . import sparsifiers
 from . import structures
@@ -14,10 +13,8 @@ from . import utils
 from .equations import Equations
 from .structures import Structure
 from .sparsifiers import Sparsifier
-from .utils import get_optimizer, get_variances
+from .utils import get_optimizer, get_topological_order
 
-
-# TODO do we need this to subclass nn.Module?
 class Daguerro(torch.nn.Module):
 
     def __init__(self, structure: Structure,
@@ -30,18 +27,29 @@ class Daguerro(torch.nn.Module):
 
     @staticmethod
     def initialize(X, args, joint=False):
-        dag_cls = DaguerroJoint if joint else DaguerroBilevel
+
+        if args.structure == "true_rank":
+            ordering = torch.from_numpy(get_topological_order(G))
+            dag_cls = FixedStructureDaguerro
+            joint = False # force bilevel optim
+
+        elif args.structure == "rnd_rank":
+            ordering = torch.randperm(X.shape[1])
+            dag_cls = FixedStructureDaguerro
+            joint = False # force bilevel optim
+
+        else:
+            dag_cls = DaguerroJoint if joint else DaguerroBilevel
+            ordering = None
+
         # INFO: initialization is deferred to the specific methods to deal with all the modules'
         # hyperparameters inplace
-        structure = structures.AVAILABLE[args.structure].initialize(X, args)
+        structure = structures.AVAILABLE[args.structure].initialize(X, args, ordering)
         sparsifier = sparsifiers.AVAILABLE[args.sparsifier].initialize(X, args, joint)
         equation = equations.AVAILABLE[args.equations].initialize(X, args, joint)
         return dag_cls(structure, sparsifier, equation)
 
     def forward(self, X, loss, args):
-        # TODO remove args from here and push everything to the initialize method,
-        #  the rationale is that in this way one can also run the algorithm not form the CLI!
-        #  as it stands it is very complicated to do that!
         if self.training:
             return self._learn(X, loss, args)
         else:
@@ -50,7 +58,7 @@ class Daguerro(torch.nn.Module):
     def _learn(self, X, loss, args): raise NotImplementedError()
 
     def _eval(self, X, loss, args):
-        alphas, complete_dags, structure_reg = self.structure()
+        _, complete_dags, _ = self.structure()
 
         logging.info(f'Fitting the mode. We have {len(complete_dags)} complete dags!')
 
@@ -68,8 +76,8 @@ class Daguerro(torch.nn.Module):
         self.sparsifier.eval()
         self.equation.eval()
 
-        dags, sparsifier_reg = self.sparsifier(complete_dags)
-        x_hat, dags, equations_reg = self.equation(X, dags)
+        dags, _ = self.sparsifier(complete_dags)
+        x_hat, dags, _ = self.equation(X, dags)
         return x_hat, dags
 
 
@@ -96,8 +104,6 @@ class DaguerroJoint(Daguerro):
 
             rec_loss = loss(x_hat, X)
 
-            #  here we weight also the regularizers by the alphas, can discuss about this...
-            #  but I think this is correct. The structure regularizer is instead unweighted as it is a global one
             objective = alphas @ (rec_loss + sparsifier_reg + equations_reg) + structure_reg
             objective.backward()
 
@@ -114,7 +120,6 @@ class DaguerroJoint(Daguerro):
                 "objective": objective.item(),
             }
 
-            # print(self.structure.theta)
             wandb.log(log_dict)
             if convergence_checker(objective):
                 logging.info(f'Objective approx convergence at epoch {epoch}')
@@ -148,11 +153,10 @@ class DaguerroBilevel(Daguerro):
             self.sparsifier.eval()
 
             # this now will return the MAP (mode) if e.g. using L0 STE Bernoulli,
-            #   todo @vale not sure what we were doing previously :)
-            dags, sparsifier_reg = self.sparsifier(complete_dags)
-            x_hat, dags, equations_reg = self.equation(X, dags)
+            dags, _ = self.sparsifier(complete_dags)
+            x_hat, dags, _ = self.equation(X, dags)
 
-            # and now it's done :) don't think it's meaningfully to consider the (inner) regularizers here
+            # and now it's done
             final_inner_loss = loss(x_hat, X)
 
             # only final loss should count! to this, we just add the regularization from above
@@ -179,33 +183,46 @@ class DaguerroBilevel(Daguerro):
                 logging.info(f'Outer obj. approx convergence at epoch {epoch}')
                 break
 
-            # some printing tbd
-            # if epoch % 100 == 0:
-            #     print(self.structure.theta)
-            #     print(self.structure.theta.grad)
-            #     print(alphas)
-            #     print(dags[0])
-            #     print(utils.get_topological_rank(dags[0].detach().numpy()))
-            #     pass
-
         return log_dict
 
-# ---- old implementation of eval part
-#
-#     def fit_mode(self, x, loss, args):
-#
-#         # todo: use sort instead
-#         (
-#             alphas,
-#             self.mode_masking,
-#         ) = self.smap_masking()  # with default values, returns MAP
-#         assert len(alphas) == 1
-#
-#         self.mode_estimator = self.estimator_cls(
-#             self.d, 1, **self.estimator_kwargs
-#         )  # one structure
-#         self.mode_estimator.fit(x, self.mode_masking, loss, args)
-#
-#     def get_binary_adj(self):
-#
-#         return self.mode_estimator.get_structure(self.mode_masking).squeeze(0)
+class FixedStructureDaguerro(Daguerro):
+    
+    def _learn(self, X, loss, args, metric_fun=None):
+        log_dict = {}
+
+        # INFO: main calls, note that here all the regularization terms are computed by the respective modules
+        alphas, complete_dags, _ = self.structure()
+
+        # fit the equations and the sparsifier, if any
+        self.equation.fit(X, complete_dags, self.sparsifier, loss)
+
+        # now evaluate the optimized methods
+        self.equation.eval()
+        self.sparsifier.eval()
+
+        # this now will return the MAP (mode) if e.g. using L0 STE Bernoulli,
+        dags, _ = self.sparsifier(complete_dags)
+        x_hat, dags, _ = self.equation(X, dags)
+
+        final_inner_loss = loss(x_hat, X)
+        objective = alphas @ final_inner_loss
+
+        log_dict = {
+            "number of orderings": len(alphas),
+            "objective": objective.item(),
+        }
+
+        wandb.log(log_dict)
+        
+        return log_dict
+    
+    def _eval(self, X, loss, args):
+        _, complete_dags, _ = self.structure()
+
+        self.sparsifier.eval()
+        self.equation.eval()
+
+        dags, _ = self.sparsifier(complete_dags)
+        x_hat, dags, _ = self.equation(X, dags)
+
+        return x_hat, dags

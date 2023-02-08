@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import wandb
 from matplotlib import pyplot as plt
-from torch.optim import LBFGS, SGD, Adam, AdamW, Optimizer
+from torch.optim import SGD, Adam, AdamW, Optimizer
 from pathlib import Path
 
 import causaldag as cd
@@ -178,7 +178,6 @@ def markov_equiv_class(dag: np.ndarray):
 
     Returns: a list of matrices representing all the dags in the Markov equivalence class
     """
-    # TODO @matt
 
     cpdag = cd.DAG.from_amat(dag).cpdag()
 
