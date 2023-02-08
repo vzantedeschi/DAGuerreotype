@@ -58,8 +58,6 @@ def get_syntren_dataset(args_ns, seed=1):
 
 
 def get_dataset(args, to_torch=True, seed=1):
-    # TODO: load cpdag as well
-    # TODO: synthetic - return Estimator
     datasets = {
         "synthetic": get_synthetic_dataset,
         "sachs": get_sachs_dataset,
@@ -77,9 +75,9 @@ def get_dataset(args, to_torch=True, seed=1):
 
     if to_torch:
         dag_B, dag_W, data = (
-            torch.from_numpy(dag_B).to(args.device),
-            torch.from_numpy(dag_W).to(args.device),
-            torch.from_numpy(data).to(args.device),
+            torch.from_numpy(dag_B),
+            torch.from_numpy(dag_W),
+            torch.from_numpy(data),
         )
 
     return dag_B, dag_W, data

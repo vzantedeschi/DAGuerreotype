@@ -6,37 +6,12 @@ from . import structures
 from . import equations
 from . import utils
 
-# todo cleanup args
-
-
 def parse_default_data_gen_args(
     argparser: argparse.ArgumentParser = None,
 ) -> Tuple[argparse.Namespace, argparse.ArgumentParser]:
-    # ------------------------------------------ Logistics --------------------------------------------
+
     augmented_parser = (
-        argparser if argparser else argparse.ArgumentParser(description="GraphLearning")
-    )
-
-    augmented_parser.add_argument("--project", type=str, default="default")
-    augmented_parser.add_argument("--entity", type=str, default="daguerro")
-    augmented_parser.add_argument(
-        "--nogpu",
-        default=False,
-        action="store_true",
-        help="whether not to use gpu even if available",
-    )
-    augmented_parser.add_argument(
-        "--wandb",
-        default=False,
-        action="store_true",
-        help="whether logging in wandb console",
-    )
-
-    augmented_parser.add_argument(
-        "--results_path",
-        type=str,
-        default="./results/",
-        help="Path to save experimental results",
+        argparser if argparser else argparse.ArgumentParser(description="Data")
     )
 
     augmented_parser.add_argument(
@@ -110,7 +85,29 @@ def parse_default_model_args(
         argparser if argparser else argparse.ArgumentParser(description="Daguerreo")
     )
 
-    parser.add_argument("--model", default="daguerreo", choices=["daguerreo", "snr"])
+    parser.add_argument("--project", type=str, default="DAGuerreotype")
+    parser.add_argument(
+        "--nogpu",
+        default=False,
+        action="store_true",
+        help="whether not to use gpu even if available",
+    )
+    parser.add_argument(
+        "--wandb",
+        default=False,
+        action="store_true",
+        help="whether logging in wandb console",
+    )
+    parser.add_argument("--entity", type=str, default="default") # Useful for WandB logging
+
+    parser.add_argument(
+        "--results_path",
+        type=str,
+        default="./results/",
+        help="Path to save experimental results",
+    )
+
+    parser.add_argument("--model", default="daguerreo", choices=["daguerreo"])
 
     parser.add_argument(
         "--joint",
@@ -139,41 +136,24 @@ def parse_default_model_args(
     # -------------------------------------------------- MLP --------------------------------------------------
 
     parser.add_argument(
-        "--hidden", type=int, default=10, help="Dimensions of hidden layers"
+        "--hidden", type=int, default=10, help="Dimension of hidden layers"
     )
 
     # -------------------------------------------------- Training ---------------------------------------------
-    # TODO check optimization hypers and how we use them in joint and bilevel
     parser.add_argument(
         "--optimizer",
         default="adam",
         type=str,
         choices=["adam", "adamW", "sgd"],
     )
-    parser.add_argument("--lr_theta", type=float, default=1e-1)
-    parser.add_argument(
-        "--eq_optimizer",
-        default="sgd",
-        type=str,
-        choices=["adam", "adamW", "sgd"],
-    )
     parser.add_argument("--lr", type=float, default=1e-1)
+    parser.add_argument("--num_epochs", type=int, default=5000)
 
     parser.add_argument('--es_tol', type=int, default=100)
     parser.add_argument('--es_delta', type=float, default=1.e-4)
 
-    parser.add_argument('--es_tol_inner', type=int, default=10)
-    parser.add_argument('--es_delta_inner', type=float, default=1.e-4)
-
     parser.add_argument(
-        "--device",
-        type=str,
-        default="cpu",
-        help="choice of device",
-        choices=["cpu", "cuda"],
-    )
-    parser.add_argument(
-        "--pruning_reg", type=float, default=0.001, help="pruning penalty over graph"
+        "--pruning_reg", type=float, default=0.001, help="pruning penalty over edges"
     )
     parser.add_argument(  
         "--l2_theta",
@@ -185,23 +165,27 @@ def parse_default_model_args(
         "--l2_eq",
         type=float,
         default=0.0005,
-        help="l2 penalty over all models weights (not graph)",
+        help="l2 penalty over all models weights (not structure)",
     )
 
-    parser.add_argument("--num_epochs", type=int, default=5000)
+    # for bi-level optimization only
+    parser.add_argument("--lr_theta", type=float, default=1e-1)
+    parser.add_argument(
+        "--eq_optimizer",
+        default="sgd",
+        type=str,
+        choices=["adam", "adamW", "sgd"],
+    )
+
+    parser.add_argument('--es_tol_inner', type=int, default=10)
+    parser.add_argument('--es_delta_inner', type=float, default=1.e-4)
+
     parser.add_argument("--num_inner_iters", type=int, default=200)
-
-    argparser.add_argument(
-        "--nev",
-        action="store_true",
-        default=False,
-        help="compute likelihood assuming variable non-equal variance",
-    )
 
     # ------------------------------------------------ SparseMAP ------------------------------------------------
 
     parser.add_argument(
-        "--smap_init_theta", type=str, default="zeros", choices=["zeros", "variances"]
+        "--init_theta", type=str, default="zeros", choices=["zeros", "variances"]
     )
 
     parser.add_argument(
@@ -212,7 +196,7 @@ def parse_default_model_args(
     )
 
     parser.add_argument(
-        "--smap_iter",
+        "--smap_iter_k",
         type=int,
         default=100,
         help="SparseMap: number of iterations of QP solver",
