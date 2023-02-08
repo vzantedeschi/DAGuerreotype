@@ -1,7 +1,7 @@
 import logging
 import math
 import warnings
-from abc import ABC
+from abc import ABC, abstractmethod
 from itertools import chain
 
 import numpy as np
@@ -20,6 +20,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 class Equations(torch.nn.Module):
 
+    @abstractmethod
     def forward(self, X, dags):
         """
 
@@ -84,47 +85,6 @@ class LARSAlgorithm(Equations):
     def initialize(cls, X, args, joint=False):
         return cls(X.shape[1])
 
-
-class LARSDebiasedAlgorithm(LARSAlgorithm):
-# FIXME is this done??? do we want it???
-# it's not done!
-
-
-    def fit(self, X, dags, dag_sparsifier=None, loss=None):
-        super(LARSAlgorithm, self).fit(X, dags, dag_sparsifier, loss)
-
-        LR = LinearRegression(normalize=False, n_jobs=1)
-        LL = LassoLarsIC(criterion="bic", normalize=False)
-
-        x_numpy = X.detach().numpy()
-        masks_numpy = dags.long().detach().numpy()
-
-        self.W = np.zeros((len(masks_numpy), self.d, self.d))
-
-        for m, mask in enumerate(masks_numpy):
-            for target in range(self.d):
-
-                covariates = np.nonzero(mask[:, target])[0]
-
-                if len(covariates) > 0:  # if target is not a root node
-
-                    LL.fit(x_numpy[:, covariates], x_numpy[:, target].ravel())
-                    ll_masked = LL.coef_ != 0
-                    raise NotImplementedError()
-                    # todo finish this!
-
-                    X_masked2 = x_numpy[:, covariates][:, mask]
-                    LR.fit(x_numpy[:, covariates][:, mask], x_numpy[:, target].ravel())
-                    weight = np.abs(LR.coef_)
-
-                    LL.fit(x_numpy[:, covariates] * weight, x_numpy[:, target].ravel())
-                    self.W[m, covariates, target] = LL.coef_ * weight
-
-            assert (self.W[m, mask == 0] == 0).all(), (self.W[m], mask)  # FIXME why this?
-
-        self.W = torch.from_numpy(self.W)
-
-
 def masked_x(X, dags):
     """
     Args:
@@ -162,10 +122,10 @@ class ParametricGDFitting(Equations, ABC):
         return cls(X.shape[1], 1 if joint else None,
                    **cls._hps_from_args(args))
 
-    @classmethod   # TODO this should be the other way around... namely construct the parser and args from hypers!
+    @classmethod
     def _hps_from_args(cls, args):
         return {
-            # note that the equations' optimizer parameters are different from those of the structure
+            # note that the equations' optimizer parameters might be different from those of the structure
             'optimizer': lambda _vrs: utils.get_optimizer(_vrs, name=args.eq_optimizer, lr=args.lr),
             'n_iters': args.num_inner_iters,
             'l2_reg_strength': args.l2_eq,
@@ -191,8 +151,6 @@ class ParametricGDFitting(Equations, ABC):
             inner_objective = inner_objective.sum()
 
             inner_objective.backward()
-            # TODO, record the inner objective here,
-            #  as we may want to check if we're getting anywhere close to convergence
             inner_opt.step()
             if self.convergence_checker:
                 if self.convergence_checker(inner_objective):
@@ -233,7 +191,7 @@ class LinearEquations(ParametricGDFitting):
     def init_parameters(self, num_structures):
         # W[:, p, c] one weight from parent p to child c
         # W[0]'s column c reconstructs node c
-        # TODO [low priority] add bias, not needed atm
+
         self.W = _initialize_param(num_structures, self.d, self.d)
         return self
 
@@ -254,14 +212,13 @@ class NonlinearEquations(ParametricGDFitting):
         self.W1 = None
         self.b1 = None
         self.W2 = None
-        # todo add bias [low priority] see liner eq
+
         super().__init__(d, num_structures, l2_reg_strength, optimizer, n_iters, convergence_checker)
 
     @classmethod
     def _hps_from_args(cls, args):
         return super()._hps_from_args(args) | {
             'hidden_units': args.hidden,
-            # TODO activation seems missing in args :)
         }
 
     def init_parameters(self, num_structures):
@@ -284,7 +241,6 @@ class NonlinearEquations(ParametricGDFitting):
 
 AVAILABLE = {
     'lars': LARSAlgorithm,
-    # 'larsdb': LARSDebiasedAlgorithm,
     'linear': LinearEquations,
     'nonlinear': NonlinearEquations,
 }
