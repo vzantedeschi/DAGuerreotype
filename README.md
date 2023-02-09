@@ -1,5 +1,5 @@
 # DAGuerreotype: DAG Learning on the Permutahedron
-
+![overview](./Daguerreotype.png)
 
 ## Installation instructions
 
@@ -30,7 +30,7 @@ chmod +x linux-install.sh
 ## Running instructions
 
 The main script for running DAGuerreotype is `daguerreo.run_model.py`.
-By default the following runs a bi-level optimization of on Sachs:
+By default the following runs a bi-level optimization of SparseMAP + linear edge estimator on the Sachs dataset:
 ```bash
 python -m daguerreo.run_model
 ```
@@ -55,7 +55,7 @@ python -m daguerreo.run_model --structure sp_map --equations lars --sparsifier n
 For synthetic data (by default 10-nodes ER graph with linear Gaussian noise model) use the following
 ```bash
 python -m daguerreo.run_model --joint --dataset synthetic
-python -m daguerreo.run_model --dataset synthetic --graph_type BP --sem_type gumbel --num_nodes 50 --num_samples 2000 --noise_scale 0.3 --s0 4
+python -m daguerreo.run_model --dataset synthetic --graph_type BP --sem_type gumbel --num_nodes 50 --num_samples 2000 --noise_scale 0.3 --s0 1
 ```
 
 To initialize the score vector of the order learners to the marginal variances use `--init_theta variances` (default is a vector of all 0s).
@@ -65,8 +65,10 @@ You can also add the following options:
 - `--nogpu` to force training on cpu;
 - `--standardize` to standardize the data before learning (otherwise it is only 0-centered).
 
+To replicate the results on Sachs and Syntren reported in the paper, run `real.sh`.
+
 ### Hyper-parameter Tuning
-To carry out a Bayesian Optimization of the hyper-parameters using [optuna]{https://optuna.org/} as described in Appendix D of the paper, run e.g.,
+To carry out a Bayesian Optimization of the hyper-parameters using [optuna](https://optuna.org/) as described in Appendix D of the paper, run e.g.,
 
 ```bash
 e="linear"
@@ -74,7 +76,8 @@ p="l0_ber_ste"
 s="sp_map"
 python -m daguerreo.hpo --dataset=synthetic --num_nodes=20 --project=hpo --joint --wandb --structure=$s --equations=$e --sparsifier=$p
 ```
-### Implemented Modules
+
+## Available Modules
 Implemented structure learners are defined in `daguerreo/structures.py`:
 1. `daguerreo.structures.SparseMapSVStructure`: SparseMAP operator for learning orderings on the Permutahedron
 2. `daguerreo.structures.TopKSparseMaxSVStructure`: Top-K SparseMax operator for learning orderings on the Permutahedron
@@ -85,7 +88,7 @@ They all return complete DAGs (later pruned by a sparsifier). New structures sho
 Implemented edge estimators are defined in `daguerreo/equations.py`:
 1. `daguerreo.equations.LinearEquations`: differentiable linear layer X -> X W
 2. `daguerreo.equations.NonlinearEquations`: differentiable one-hidden-layer network with leaky ReLU activation
-3. `daguerreo.equations.LARSAlgorithm`: non-differentiable regressor as described in [Beware of the Simulated DAG! Causal Discovery Benchmarks May Be Easy To Game]{https://arxiv.org/abs/2102.13647}
+3. `daguerreo.equations.LARSAlgorithm`: non-differentiable regressor as described in [Beware of the Simulated DAG! Causal Discovery Benchmarks May Be Easy To Game](https://arxiv.org/abs/2102.13647)
 
 New estimators should extend `daguerreo.equations.Equations`.
 
