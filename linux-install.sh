@@ -21,7 +21,7 @@ cd ..
 # wget --no-check-certificate --content-disposition https://cran.r-project.org/src/contrib/Archive/SID/SID_1.0.tar.gz
 cd DAGuerreotype
 python setup.py build_ext --inplace
-# install R and libraries to compute SID
+# install R and libraries to compute SID (optional)
 sudo apt-get update &&
 sudo apt-get install -y software-properties-common &&
 sudo rm -rf /var/lib/apt/lists/*

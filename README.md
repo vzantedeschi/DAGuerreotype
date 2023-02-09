@@ -78,6 +78,7 @@ python -m daguerreo.hpo --dataset=synthetic --num_nodes=20 --project=hpo --joint
 ```
 
 ## Available Modules
+### Structure Estimators
 Implemented structure learners are defined in `daguerreo/structures.py`:
 1. `daguerreo.structures.SparseMapSVStructure`: SparseMAP operator for learning orderings on the Permutahedron
 2. `daguerreo.structures.TopKSparseMaxSVStructure`: Top-K SparseMax operator for learning orderings on the Permutahedron
@@ -98,3 +99,13 @@ Implemented edge sparsifiers are defined in `daguerreo/sparsifiers.py`:
 2. `daguerreo.sparsifiers.NoSparsifier`: dummy module when no sparsifier is wanted/needed
 
 New sparsifiers should extend `daguerreo.sparsifiers.Sparsifier`.
+
+## Bibtex
+```bibtex
+@inproceedings{zantedeschi2023dag,
+  title={DAG Learning via Sparse Relaxations},
+  author={Zantedeschi, Valentina and Franceschi, Luca and Kaddour, Jean and Kusner, Matt and Niculae, Vlad},
+  booktitle={International Conference on Learning Representations},
+  year={2023}
+}
+```
