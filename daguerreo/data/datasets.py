@@ -14,10 +14,10 @@ def rnd_reordering(dag_B, data):
 
     # apply random permutation to variables, as some methods may benefit from having to predict the trivial ordering [1, 2, ..., d]
     P = np.random.permutation(np.eye(dag_B.shape[0]))
-    r = np.nonzero(P)[0]
+    r = np.nonzero(P)[1]
 
-    dag_B = P.T @ dag_B @ P
-    data = data[r]
+    dag_B = P @ dag_B @ P.T
+    data = data[:, r]
 
     return dag_B, data
 
@@ -51,7 +51,7 @@ def get_syntren_dataset(args_ns, seed=1):
     seed = np.clip(seed, 1, 10)
     data = np.load(os.path.join(_DATA_DIR, "syntren", f"data{seed}.npy"))
     dag_B = np.load(os.path.join(_DATA_DIR, "syntren", f"DAG{seed}.npy"))
-
+    
     dag_B, data = rnd_reordering(dag_B, data)
 
     return dag_B, dag_B, data

@@ -60,7 +60,7 @@ def run(args, wandb_mode, save_dir):
         )
         
         logging.info(
-            f" Data seed: {seed}, run Daguerro with {args.equations} and SMAP's initial theta = {args.init_theta}"
+            f" Data seed: {seed}, run DAGuerreotype with {args.structure}, {args.equations} edge estimator and initial score vector theta = {args.init_theta}"
         )
         
         if args.model == "daguerreo":

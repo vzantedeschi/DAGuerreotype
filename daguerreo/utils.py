@@ -124,6 +124,14 @@ def get_topological_rank(graph: np.array) -> np.array:
 
     return rank
 
+def get_topological_order(graph: np.array) -> np.array:
+    # NB: topological ordering is not unique
+
+    g_nx = nx.from_numpy_array(graph, create_using=nx.DiGraph)
+
+    top_order = np.array(list(nx.topological_sort(g_nx)))
+
+    return top_order
 
 def plot_DAG(graph: np.ndarray, name: str) -> bool:
 
