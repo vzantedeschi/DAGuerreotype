@@ -15,6 +15,7 @@ python setup.py build_clib # builds ad3 in-place
 pip install -e . # builds lpsmap and creates a link
 # other dependencies
 cd ..
+export PYTHONPATH="${PYTHONPATH}:`readlink -f lp-sparsemap-master`"
 # wget --no-check-certificate --content-disposition https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 # bash Miniconda3-latest-Linux-x86_64.sh
 # pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
